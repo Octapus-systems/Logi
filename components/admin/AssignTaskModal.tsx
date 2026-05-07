@@ -1,6 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+interface StaffMember {
+  _id: string;
+  name: string;
+  email: string;
+}
 
 interface AssignTaskModalProps {
   isOpen: boolean;
@@ -14,6 +20,35 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
     assignedTo: "",
     priority: "medium",
   });
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch staff members when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchStaffMembers();
+    }
+  }, [isOpen]);
+
+  const fetchStaffMembers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/v1/users");
+      const result = await response.json();
+      
+      if (result.success) {
+        setStaffMembers(result.data);
+      } else {
+        setError(result.message || "Failed to load staff members");
+      }
+    } catch (err) {
+      setError("Failed to load staff members");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -64,9 +99,18 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
               value={formData.assignedTo}
               onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
               className="w-full bg-surface-container-low border border-white/10 rounded-xl px-4 py-3 text-on-surface outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
+              disabled={loading}
             >
-              <option value="">Select staff member...</option>
+              <option value="">{loading ? "Loading staff..." : "Select staff member..."}</option>
+              {staffMembers.map((staff) => (
+                <option key={staff._id} value={staff._id}>
+                  {staff.name}@{staff.email.split("@")[1]}
+                </option>
+              ))}
             </select>
+            {error && (
+              <p className="text-error text-label-xs mt-1">{error}</p>
+            )}
           </div>
 
           <div>
