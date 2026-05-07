@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CheckCircle, LogIn, Eye, EyeOff } from "lucide-react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { CheckCircle, LogIn, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -16,6 +18,8 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+  const router = useRouter();
 
   const {
     register,
@@ -27,8 +31,42 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
-    console.log("Login data:", data);
-    setTimeout(() => setIsLoading(false), 1000);
+    setError("");
+
+    try {
+      const result = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        if (result.error.startsWith("DB_ERROR:")) {
+          setError("Database connection failed. Check MongoDB/Atlas network access and try again.");
+        } else {
+          setError("Invalid email or password");
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      if (result?.ok) {
+        // Fetch session to get user role
+        const response = await fetch("/api/auth/session");
+        const session = await response.json();
+
+        // Redirect based on role
+        if (session?.user?.role === "admin") {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/staff/dashboard");
+        }
+        router.refresh();
+      }
+    } catch (error) {
+      setError("An error occurred. Please try again.");
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -48,6 +86,13 @@ export default function LoginPage() {
               <h1 className="text-h3 font-h3 text-white">LOGI</h1>
             </div>
           </header>
+
+          {error && (
+            <div className="flex items-center gap-2 bg-error/10 border border-error/20 rounded-xl px-4 py-3 text-error text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           <form
             onSubmit={handleSubmit(onSubmit)}

@@ -9,44 +9,59 @@ import User from '../models/User';
 dotenv.config();
 
 /**
- * Seed script to add staff user to MongoDB
- * This script creates a staff user with hardcoded credentials
+ * Seed script to add staff and admin users to MongoDB
+ * This script creates users with hardcoded credentials
  */
-async function seedUser() {
+async function seedUsers() {
   try {
     console.log('Connecting to MongoDB...');
     await connectDB();
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: 'Fathima@octapus.com' });
+    const usersToCreate = [
+      {
+        email: 'Fathima@octapus.com',
+        password: 'Fath@123',
+        name: 'Fathima',
+        role: 'staff',
+        lives: 0,
+        isActive: true,
+      },
+      {
+        email: 'Admin@octapus.com',
+        password: 'Admin@666',
+        name: 'Admin',
+        role: 'admin',
+        lives: 0,
+        isActive: true,
+      },
+    ];
 
-    if (existingUser) {
-      console.log('User already exists:', existingUser.email);
-      console.log('Skipping creation...');
-      process.exit(0);
+    for (const userData of usersToCreate) {
+      // Check if user already exists
+      const existingUser = await User.findOne({ email: userData.email });
+
+      if (existingUser) {
+        console.log('User already exists:', existingUser.email);
+        console.log('Skipping creation...\n');
+        continue;
+      }
+
+      // Create new user
+      const newUser = await User.create(userData);
+
+      console.log(`${newUser.role} user created successfully:`);
+      console.log('Email:', newUser.email);
+      console.log('Name:', newUser.name);
+      console.log('Role:', newUser.role);
+      console.log('Password will be hashed automatically\n');
     }
 
-    // Create new staff user
-    const staffUser = await User.create({
-      email: 'Fathima@octapus.com',
-      password: 'Fath@123',
-      name: 'Fathima',
-      role: 'staff',
-      lives: 0,
-      isActive: true,
-    });
-
-    console.log('Staff user created successfully:');
-    console.log('Email:', staffUser.email);
-    console.log('Name:', staffUser.name);
-    console.log('Role:', staffUser.role);
-    console.log('Password will be hashed automatically');
-
+    console.log('All users processed successfully!');
     process.exit(0);
   } catch (error) {
-    console.error('Error seeding user:', error);
+    console.error('Error seeding users:', error);
     process.exit(1);
   }
 }
 
-seedUser();
+seedUsers();

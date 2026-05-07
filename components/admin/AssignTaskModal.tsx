@@ -66,9 +66,6 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
               className="w-full bg-surface-container-low border border-white/10 rounded-xl px-4 py-3 text-on-surface outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
             >
               <option value="">Select staff member...</option>
-              <option value="julian">Julian Vane</option>
-              <option value="elena">Elena Ross</option>
-              <option value="marcus">Marcus Chen</option>
             </select>
           </div>
 
