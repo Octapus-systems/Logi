@@ -216,9 +216,20 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Purple Glow Background */
+/* Purple Glow Effect */
 .purple-glow {
+  box-shadow: 0 0 20px rgba(156, 122, 255, 0.3);
+}
+
+/* Purple Glow Background */
+.purple-glow-bg {
   background: radial-gradient(circle at center, rgba(140, 98, 255, 0.12) 0%, rgba(20, 18, 27, 0) 70%);
+}
+
+/* Active Task Card */
+.active-task-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 4px solid #cebdff;
 }
 
 /* Gradient Button */
