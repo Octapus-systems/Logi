@@ -111,9 +111,9 @@ export async function processLifeDeductions(): Promise<{
           continue; // Still within grace period or has recent activity
         }
 
-        // Deduct 1 life
+        // Deduct 0.5 life
         const previousLives = attendance.lives;
-        const newLives = previousLives - 1;
+        const newLives = previousLives - 0.5;
 
         // Update attendance record
         attendance.lives = newLives;
@@ -128,7 +128,7 @@ export async function processLifeDeductions(): Promise<{
           attendanceId: attendance._id,
           date: today,
           action: 'deduct',
-          amount: 1,
+          amount: 0.5,
           reason: 'No task reply within 30 minutes',
           previousLives,
           newLives,

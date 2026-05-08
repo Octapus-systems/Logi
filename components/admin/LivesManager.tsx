@@ -4,21 +4,38 @@ import { useState, useEffect } from "react";
 import { useLives, type StaffLivesData } from "@/hooks/useLives";
 import { X, RefreshCw } from "lucide-react";
 
-function HeartIcon({ filled, className }: { filled: boolean; className?: string }) {
+function HeartIcon({ fillType, className }: { fillType: 'full' | 'half' | 'empty'; className?: string }) {
   return (
-    <svg
-      className={`w-4 h-4 ${className}`}
-      fill={filled ? "currentColor" : "none"}
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={filled ? 0 : 2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-      />
-    </svg>
+    <div className={`relative w-4 h-4 ${className}`}>
+      {/* Background (Outline) */}
+      <svg
+        className="absolute inset-0 w-full h-full"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+        />
+      </svg>
+      
+      {/* Fill */}
+      {(fillType === 'full' || fillType === 'half') && (
+        <svg
+          className="absolute inset-0 w-full h-full"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          style={fillType === 'half' ? { clipPath: 'inset(0 50% 0 0)' } : {}}
+        >
+          <path
+            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+          />
+        </svg>
+      )}
+    </div>
   );
 }
 
@@ -153,24 +170,30 @@ export function LivesManager() {
                 {/* Lives Display */}
                 <div className="flex items-center gap-1.5">
                   <div className="flex gap-0.5">
-                    {[1, 2, 3, 4].map((i) => (
-                      <HeartIcon
-                        key={i}
-                        filled={i <= staff.lives}
-                        className={
-                          i <= staff.lives
-                            ? staff.lives <= 1
-                              ? "text-red-400"
-                              : staff.lives <= 2
-                              ? "text-yellow-400"
-                              : "text-primary"
-                            : "text-outline/30"
-                        }
-                      />
-                    ))}
+                    {[1, 2, 3, 4].map((i) => {
+                      const isFull = i <= staff.lives;
+                      const isHalf = !isFull && i - 0.5 <= staff.lives;
+                      const fillType = isFull ? 'full' : isHalf ? 'half' : 'empty';
+                      
+                      return (
+                        <HeartIcon
+                          key={i}
+                          fillType={fillType}
+                          className={
+                            fillType !== 'empty'
+                              ? staff.lives <= 1
+                                ? "text-red-400"
+                                : staff.lives <= 2
+                                ? "text-yellow-400"
+                                : "text-primary"
+                              : "text-outline/30"
+                          }
+                        />
+                      );
+                    })}
                   </div>
                   <span className={`text-xl font-bold w-7 text-center ${staff.lives <= 1 ? "text-red-400" : staff.lives <= 2 ? "text-yellow-400" : "text-primary"}`}>
-                    {staff.lives}
+                    {staff.lives.toFixed(1)}
                   </span>
                 </div>
 
@@ -244,15 +267,21 @@ export function LivesManager() {
                 <p className="text-sm font-semibold text-on-surface">{selectedStaff.name}</p>
                 <div className="flex items-center gap-2 mt-2">
                   <div className="flex gap-0.5">
-                    {[1, 2, 3, 4].map((i) => (
-                      <HeartIcon
-                        key={i}
-                        filled={i <= selectedStaff.lives}
-                        className={i <= selectedStaff.lives ? "text-primary" : "text-outline/30"}
-                      />
-                    ))}
+                    {[1, 2, 3, 4].map((i) => {
+                      const isFull = i <= selectedStaff.lives;
+                      const isHalf = !isFull && i - 0.5 <= selectedStaff.lives;
+                      const fillType = isFull ? 'full' : isHalf ? 'half' : 'empty';
+                      
+                      return (
+                        <HeartIcon
+                          key={i}
+                          fillType={fillType}
+                          className={fillType !== 'empty' ? "text-primary" : "text-outline/30"}
+                        />
+                      );
+                    })}
                   </div>
-                  <span className="text-xs text-outline">Current: <span className="text-primary font-bold">{selectedStaff.lives}</span></span>
+                  <span className="text-xs text-outline">Current: <span className="text-primary font-bold">{selectedStaff.lives.toFixed(1)}</span></span>
                 </div>
               </div>
 
@@ -260,7 +289,7 @@ export function LivesManager() {
               <div>
                 <label className="text-xs font-semibold text-outline uppercase tracking-wide block mb-2">Amount</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {[1, 2, 3, 4].map((num) => (
+                  {[0.5, 1, 2, 3, 4].map((num) => (
                     <button
                       key={num}
                       onClick={() => setAmount(num)}

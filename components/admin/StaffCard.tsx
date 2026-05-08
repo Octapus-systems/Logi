@@ -1,6 +1,6 @@
 "use client";
 
-import { User, Heart } from "lucide-react";
+import { User } from "lucide-react";
 
 interface StaffMember {
   id: string;
@@ -12,6 +12,41 @@ interface StaffMember {
   isOnline: boolean;
   status?: "checked-in" | "checked-out" | "absent";
   isOnBreak?: boolean;
+}
+
+function HeartIcon({ fillType, className }: { fillType: 'full' | 'half' | 'empty'; className?: string }) {
+  return (
+    <div className={`relative w-3 h-3 sm:w-3.5 sm:h-3.5 ${className}`}>
+      {/* Background (Outline) */}
+      <svg
+        className="absolute inset-0 w-full h-full"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+        />
+      </svg>
+      
+      {/* Fill */}
+      {(fillType === 'full' || fillType === 'half') && (
+        <svg
+          className="absolute inset-0 w-full h-full"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          style={fillType === 'half' ? { clipPath: 'inset(0 50% 0 0)' } : {}}
+        >
+          <path
+            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+          />
+        </svg>
+      )}
+    </div>
+  );
 }
 
 interface StaffCardProps {
@@ -75,14 +110,20 @@ export function StaffCard({ staff, onLifeCountChange }: StaffCardProps) {
         </div>
         {/* Life Icons - Responsive */}
         <div className="flex items-center gap-0.5 bg-primary/10 px-1.5 sm:px-2 py-1 rounded-full flex-shrink-0">
-          {Array.from({ length: Math.min(staff.maxLives || 5, 5) }).map((_, index) => (
-            <Heart
-              key={index}
-              className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${
-                index < (staff.lifeCount || 0) ? "fill-primary text-primary" : "text-primary/20"
-              }`}
-            />
-          ))}
+          {Array.from({ length: Math.min(staff.maxLives || 5, 5) }).map((_, index) => {
+            const i = index + 1;
+            const isFull = i <= (staff.lifeCount || 0);
+            const isHalf = !isFull && i - 0.5 <= (staff.lifeCount || 0);
+            const fillType = isFull ? 'full' : isHalf ? 'half' : 'empty';
+            
+            return (
+              <HeartIcon
+                key={index}
+                fillType={fillType}
+                className={fillType !== 'empty' ? "text-primary" : "text-primary/20"}
+              />
+            );
+          })}
           {(staff.maxLives || 0) > 5 && (
             <span className="text-[10px] text-primary ml-1">+{(staff.maxLives || 0) - 5}</span>
           )}
@@ -103,7 +144,7 @@ export function StaffCard({ staff, onLifeCountChange }: StaffCardProps) {
             <span className="text-sm sm:text-base">-</span>
           </button>
           <span className="font-bold text-primary w-8 sm:w-12 text-center text-sm sm:text-base">
-            {staff.lifeCount || 0}
+            {(staff.lifeCount || 0).toFixed(1)}
           </span>
           <button
             onClick={() => onLifeCountChange(1)}
