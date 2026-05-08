@@ -1,12 +1,14 @@
+import { LucideIcon } from "lucide-react";
+
 interface StatsCardProps {
   title: string;
   value: number;
-  icon: string;
+  icon: LucideIcon;
   variant?: "default" | "primary" | "tertiary";
   glow?: boolean;
 }
 
-export function StatsCard({ title, value, icon, variant = "default", glow }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, variant = "default", glow }: StatsCardProps) {
   const valueColorClass = {
     default: "text-on-surface",
     primary: "text-primary",
@@ -28,7 +30,7 @@ export function StatsCard({ title, value, icon, variant = "default", glow }: Sta
       <p className="text-on-surface-variant text-caps-xs uppercase mb-2 sm:mb-4 truncate">{title}</p>
       <div className="flex items-end justify-between">
         <span className={`text-h1 sm:text-h1 ${valueColorClass} text-xl sm:text-4xl`}>{value}</span>
-        <span className={`material-symbols-outlined mb-1 text-lg sm:text-xl ${iconColorClass}`}>{icon}</span>
+        <Icon className={`w-5 h-5 sm:w-6 sm:h-6 mb-1 ${iconColorClass}`} />
       </div>
     </div>
   );

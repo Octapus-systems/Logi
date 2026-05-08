@@ -9,6 +9,7 @@ import { AssignTaskModal } from "@/components/admin/AssignTaskModal";
 import { LivesManager } from "@/components/admin/LivesManager";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAdminData } from "@/hooks/useAdminData";
+import { Users, ClipboardList, CheckCircle, Radio, BadgeCheck, MessageSquare, List } from "lucide-react";
 
 interface StaffMember {
   id: string;
@@ -157,26 +158,26 @@ export default function AdminDashboard() {
         <StatsCard
           title="Total Staff"
           value={stats.totalStaff}
-          icon="diversity_3"
+          icon={Users}
           variant="primary"
           glow
         />
         <StatsCard
           title="Total Tasks"
           value={stats.totalTasks}
-          icon="task"
+          icon={ClipboardList}
           variant="default"
         />
         <StatsCard
           title="Completed"
           value={stats.completed}
-          icon="check_circle"
+          icon={CheckCircle}
           variant="tertiary"
         />
         <StatsCard
           title="Active Sessions"
           value={stats.activeSessions}
-          icon="sensors"
+          icon={Radio}
           variant="primary"
         />
       </section>
@@ -191,7 +192,7 @@ export default function AdminDashboard() {
         {/* Active Personnel */}
         <section className="xl:col-span-2">
           <h3 className="text-h3 mb-4 sm:mb-6 flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary">badge</span>
+            <BadgeCheck className="w-6 h-6 text-primary" />
             Active Personnel
           </h3>
           {staffMembers.length === 0 ? (
@@ -215,7 +216,7 @@ export default function AdminDashboard() {
         {/* Recent Replies */}
         <section className="xl:col-span-1">
           <h3 className="text-h3 mb-4 sm:mb-6 flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary">forum</span>
+            <MessageSquare className="w-6 h-6 text-primary" />
             Recent Replies
           </h3>
           {replyData.length === 0 ? (
@@ -236,7 +237,7 @@ export default function AdminDashboard() {
       {/* Task Queue */}
       <section>
         <h3 className="text-h3 mb-4 sm:mb-6 flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary">list_alt</span>
+          <List className="w-6 h-6 text-primary" />
           Active Task Queue
         </h3>
         {tasks.length === 0 ? (

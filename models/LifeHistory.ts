@@ -54,7 +54,7 @@ const LifeHistorySchema = new Schema<ILifeHistory>(
     amount: {
       type: Number,
       required: [true, 'Amount is required'],
-      min: 1,
+      min: 0.5,
     },
     reason: {
       type: String,

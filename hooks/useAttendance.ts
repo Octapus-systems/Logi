@@ -180,9 +180,15 @@ export function useAttendance() {
     }
   }, []);
 
-  // Load attendance on mount
+  // Load attendance on mount and poll every 30 seconds
   useEffect(() => {
     fetchAttendance();
+
+    const interval = setInterval(() => {
+      fetchAttendance();
+    }, 30000); // 30 seconds poll
+
+    return () => clearInterval(interval);
   }, [fetchAttendance]);
 
   return {

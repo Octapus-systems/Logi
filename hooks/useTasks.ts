@@ -265,12 +265,27 @@ export function useTasks() {
     (t) => t.status === "in-progress" || t.status === "todo"
   ).length;
 
+  /**
+   * Get done task count for TODAY
+   */
+  const doneTaskCount = tasks.filter((t) => {
+    if (t.status !== "done" || !t.completedAt) return false;
+    const completedDate = new Date(t.completedAt);
+    const today = new Date();
+    return (
+      completedDate.getDate() === today.getDate() &&
+      completedDate.getMonth() === today.getMonth() &&
+      completedDate.getFullYear() === today.getFullYear()
+    );
+  }).length;
+
   return {
     tasks,
     loading,
     error,
     pagination,
     activeTaskCount,
+    doneTaskCount,
     fetchTasks,
     startTimer,
     stopTimer,

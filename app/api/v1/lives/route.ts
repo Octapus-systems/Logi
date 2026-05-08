@@ -17,23 +17,36 @@ function getToday(): Date {
 /**
  * Calculate minutes until next deduction
  */
-function calculateMinutesUntilDeduction(lastReplyAt: Date | null, lastDeductionAt: Date | null): number | null {
+function calculateMinutesUntilDeduction(
+  lastReplyAt: Date | null,
+  lastDeductionAt: Date | null,
+  checkInTime: Date | null,
+  createdAt: Date | null
+): number | null {
   const now = new Date();
   
-  // Determine the reference time (last reply or last deduction or now)
+  // Determine the reference time (last reply or last deduction or check-in time)
   let referenceTime = lastReplyAt;
   
   if (lastDeductionAt && (!referenceTime || lastDeductionAt > referenceTime)) {
     referenceTime = lastDeductionAt;
   }
   
+  if (checkInTime && (!referenceTime || checkInTime > referenceTime)) {
+    referenceTime = checkInTime;
+  }
+  
+  if (createdAt && (!referenceTime || createdAt > referenceTime)) {
+    referenceTime = createdAt;
+  }
+  
   if (!referenceTime) {
     return null; // No activity yet, countdown not started
   }
   
-  const nextDeductionTime = new Date(referenceTime.getTime() + 30 * 60 * 1000); // 30 minutes later
+  const nextDeductionTime = new Date(new Date(referenceTime).getTime() + 30 * 60 * 1000); // 30 minutes later
   const diffMs = nextDeductionTime.getTime() - now.getTime();
-  const diffMinutes = Math.ceil(diffMs / (60 * 1000));
+  const diffMinutes = diffMs / (60 * 1000);
   
   return diffMinutes > 0 ? diffMinutes : 0;
 }
@@ -83,7 +96,9 @@ export async function GET(request: NextRequest) {
 
       const minutesUntilDeduction = calculateMinutesUntilDeduction(
         attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
-        attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null
+        attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null,
+        attendance.checkInTime ? new Date(attendance.checkInTime) : null,
+        attendance.createdAt ? new Date(attendance.createdAt) : null
       );
 
       const nextDeductionAt = minutesUntilDeduction !== null
@@ -122,7 +137,9 @@ export async function GET(request: NextRequest) {
         const user = attendance.userId as unknown as { name: string; email: string; _id: string };
         const minutesUntilDeduction = calculateMinutesUntilDeduction(
           attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
-          attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null
+          attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null,
+          attendance.checkInTime ? new Date(attendance.checkInTime) : null,
+          attendance.createdAt ? new Date(attendance.createdAt) : null
         );
 
         return {
