@@ -101,16 +101,26 @@ export function useTasks() {
       }
 
       // Update local task state - status is now manually controlled
+      // Also ensure all other tasks have their timers stopped
       setTasks((prev) =>
-        prev.map((task) =>
-          task.id === taskId
-            ? {
-                ...task,
-                isTimerRunning: true,
-                timeElapsed: data.data.currentElapsed,
-              }
-            : task
-        )
+        prev.map((task) => {
+          if (task.id === taskId) {
+            return {
+              ...task,
+              isTimerRunning: true,
+              timeElapsed: data.data.currentElapsed,
+            };
+          } else if (task.isTimerRunning) {
+            return {
+              ...task,
+              isTimerRunning: false,
+              // We don't have the exact totalTimeSpent for the auto-stopped task here,
+              // but it will be refreshed on next fetch or we can estimate it.
+              // For now, just stopping the visual timer is most important.
+            };
+          }
+          return task;
+        })
       );
 
       return data.data;
