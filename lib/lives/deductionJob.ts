@@ -1,14 +1,6 @@
 import Attendance from '@/models/Attendance';
 import LifeHistory from '@/models/LifeHistory';
-
-/**
- * Get today's date at midnight for consistent querying
- */
-function getToday(): Date {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
-}
+import { getToday, getResetLivesValue } from './utils';
 
 /**
  * Check if 30 minutes have passed since reference time
@@ -200,15 +192,19 @@ export async function initializeLivesOnCheckIn(userId: string): Promise<boolean>
     });
 
     const now = new Date();
+    const resetLivesValue = getResetLivesValue();
 
     if (attendance) {
       // Reset lives on check-in
-      attendance.lives = 4;
+      attendance.lives = resetLivesValue;
       attendance.lastReplyAt = now; // Start with fresh 30-minute window
       attendance.lastDeductionAt = undefined;
       attendance.isHalfDay = false;
       attendance.status = 'checked-in';
       attendance.checkInTime = now;
+      attendance.remainingCountdownSeconds = 0;
+      attendance.currentBreakStart = undefined;
+      attendance.isOnBreak = false;
       await attendance.save();
     } else {
       // Create new attendance record with full lives
@@ -217,10 +213,12 @@ export async function initializeLivesOnCheckIn(userId: string): Promise<boolean>
         date: today,
         status: 'checked-in',
         checkInTime: now,
-        lives: 4,
+        lives: resetLivesValue,
         lastReplyAt: now,
         lastDeductionAt: null,
         isHalfDay: false,
+        remainingCountdownSeconds: 0,
+        isOnBreak: false,
       });
     }
 
@@ -230,10 +228,10 @@ export async function initializeLivesOnCheckIn(userId: string): Promise<boolean>
       attendanceId: attendance._id,
       date: today,
       action: 'restore',
-      amount: 4,
+      amount: resetLivesValue,
       reason: 'Check-in: Lives reset to full',
       previousLives: 0,
-      newLives: 4,
+      newLives: resetLivesValue,
       timestamp: now,
     });
 

@@ -10,6 +10,7 @@
  */
 
 import { processLifeDeductions } from './deductionJob';
+import { processDailyReset } from './dailyResetJob';
 
 // Cron interval in milliseconds (1 minute)
 const CRON_INTERVAL_MS = 60 * 1000;
@@ -17,6 +18,34 @@ const CRON_INTERVAL_MS = 60 * 1000;
 // Track if cron is running
 let isRunning = false;
 let intervalId: NodeJS.Timeout | null = null;
+let lastResetDate: string | null = null;
+
+/**
+ * Main execution function for all cron jobs
+ */
+async function executeCronJobs(): Promise<void> {
+  const now = new Date();
+  const timestamp = now.toISOString();
+
+  // 1. Life Deduction Job (Runs every minute)
+  await executeDeductionJob();
+
+  // 2. Daily Reset Job (Runs at 12:00 AM IST = 18:30 UTC)
+  const currentHourUTC = now.getUTCHours();
+  const currentMinuteUTC = now.getUTCMinutes();
+  const currentDateKey = now.getUTCDate().toString() + now.getUTCMonth().toString() + now.getUTCFullYear().toString();
+
+  if (currentHourUTC === 18 && currentMinuteUTC === 30 && lastResetDate !== currentDateKey) {
+    console.log(`[LivesCron] [${timestamp}] Triggering daily reset (12:00 AM IST)...`);
+    try {
+      const result = await processDailyReset();
+      lastResetDate = currentDateKey;
+      console.log(`[LivesCron] [${timestamp}] Daily reset completed successfully:`, result);
+    } catch (error) {
+      console.error(`[LivesCron] [${timestamp}] Daily reset failed:`, error);
+    }
+  }
+}
 
 /**
  * Execute the life deduction job
@@ -58,10 +87,10 @@ export function startLivesCron(): void {
   console.log(`[LivesCron] Interval: ${CRON_INTERVAL_MS / 1000} seconds`);
   
   // Run immediately on start
-  executeDeductionJob();
+  executeCronJobs();
   
   // Schedule recurring runs
-  intervalId = setInterval(executeDeductionJob, CRON_INTERVAL_MS);
+  intervalId = setInterval(executeCronJobs, CRON_INTERVAL_MS);
   isRunning = true;
   
   console.log('[LivesCron] Cron job started successfully');
