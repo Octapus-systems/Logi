@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter by status if provided
-    if (status && ['pending', 'in-progress', 'completed', 'cancelled'].includes(status)) {
+    if (status && ['todo', 'in-progress', 'stuck', 'done'].includes(status)) {
       query.status = status;
     }
 

@@ -3,25 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 
 /**
- * Attendance data interface
+ * Simplified attendance data interface - only tracks check-in time
  */
 export interface AttendanceData {
   id?: string;
-  status: "checked-in" | "checked-out" | "absent" | "on-break";
+  status: "checked-in" | "checked-out" | "absent";
   checkInTime: Date | null;
-  checkOutTime: Date | null;
-  totalWorkingHours: number;
-  formattedWorkingHours: string;
-  remainingTime: number;
-  formattedRemainingTime: string;
-  isOnBreak: boolean;
-  breaks: Array<{
-    startTime: Date;
-    endTime?: Date;
-    duration: number;
-    reason?: string;
-  }>;
-  notes: string;
 }
 
 /**
@@ -121,54 +108,9 @@ export function useAttendance() {
   }, []);
 
   /**
-   * Toggle break (start or end)
-   */
-  const toggleBreak = useCallback(async (reason?: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch("/api/v1/attendance", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || "Failed to manage break");
-      }
-
-      // Refresh attendance data to get full updated state
-      await fetchAttendance();
-      return data.data;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      setError(message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchAttendance]);
-
-  /**
    * Check if user is currently checked in
    */
-  const isCheckedIn = attendance?.status === "checked-in" || attendance?.status === "on-break";
-
-  /**
-   * Get remaining time in seconds
-   */
-  const getRemainingSeconds = useCallback(() => {
-    if (!attendance || attendance.status !== "checked-in") {
-      return 4 * 60 * 60; // 4 hours default
-    }
-
-    const fourHours = 4 * 60 * 60;
-    const worked = attendance.totalWorkingHours;
-    return Math.max(0, fourHours - worked);
-  }, [attendance]);
+  const isCheckedIn = attendance?.status === "checked-in";
 
   // Load attendance on mount
   useEffect(() => {
@@ -182,8 +124,6 @@ export function useAttendance() {
     isCheckedIn,
     checkIn,
     checkOut,
-    toggleBreak,
     fetchAttendance,
-    getRemainingSeconds,
   };
 }

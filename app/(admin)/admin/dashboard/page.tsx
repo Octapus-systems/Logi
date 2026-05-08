@@ -7,6 +7,7 @@ import { ReplyCard } from "@/components/admin/ReplyCard";
 import { TaskTable } from "@/components/admin/TaskTable";
 import { AssignTaskModal } from "@/components/admin/AssignTaskModal";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useAdminData } from "@/hooks/useAdminData";
 
 interface StaffMember {
   id: string;
@@ -26,7 +27,7 @@ interface Reply {
   timeAgo: string;
 }
 
-interface Task {
+interface TaskDisplay {
   id: string;
   name: string;
   priority: string;
@@ -35,32 +36,93 @@ interface Task {
     avatar?: string;
     isUnassigned?: boolean;
   };
-  status: "in-progress" | "reviewing" | "pending";
+  status: "in-progress" | "reviewing" | "pending" | "done";
   timeSpent: string;
   staffReply: string;
 }
 
 export default function AdminDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { staffMembers: staffData, tasks: taskData, replies: replyData, loading, error, refreshData } = useAdminData();
 
-  // TODO: replace with real API data
-  const staffMembers: StaffMember[] = [];
-  const replies: Reply[] = [];
-  const tasks: Task[] = [];
+  const handleLifeCountChange = (staffId: string, delta: number) => {
+    console.log(`Change life count for staff ${staffId} by ${delta}`);
+  };
+
+  const formatTime = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Transform staff data to match StaffMember interface
+  const staffMembers: StaffMember[] = useMemo(() => 
+    staffData.map(staff => ({
+      id: staff.id,
+      name: staff.name,
+      tasksAssigned: taskData.filter(task => task.assignedTo._id === staff.id).length,
+      lifeCount: staff.lives,
+      maxLives: staff.lives > 0 ? staff.lives * 2 : 10, // Dynamic max based on current lives
+      avatar: "", // Could add avatar field later
+      isOnline: false, // Default to offline until we implement real online tracking
+    }))
+  , [staffData, taskData]);
+
+  // Transform task data to match TaskDisplay interface  
+  const tasks: TaskDisplay[] = useMemo(() =>
+    taskData.map(task => ({
+      id: task.id,
+      name: task.title,
+      priority: task.priority,
+      assignedTo: {
+        name: task.assignedTo.name,
+        avatar: "",
+        isUnassigned: false,
+      },
+      status: task.status as "in-progress" | "reviewing" | "pending" | "done",
+      timeSpent: formatTime(task.timeElapsed),
+      staffReply: task.replies.length > 0 ? task.replies[task.replies.length - 1].content : "",
+    }))
+  , [taskData]);
 
   const stats = useMemo(
     () => ({
       totalStaff: staffMembers.length,
       totalTasks: tasks.length,
-      completed: 0,
-      activeSessions: 0,
+      completed: tasks.filter(task => task.status === 'done').length,
+      activeSessions: tasks.filter(task => task.status === 'in-progress').length,
     }),
     [staffMembers.length, tasks.length]
   );
 
-  const handleLifeCountChange = (staffId: string, delta: number) => {
-    console.log(`Change life count for staff ${staffId} by ${delta}`);
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-on-surface-variant">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="text-error mb-4">Error loading data</div>
+          <p className="text-on-surface-variant mb-4">{error}</p>
+          <button 
+            onClick={refreshData}
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-16">
@@ -68,7 +130,12 @@ export default function AdminDashboard() {
       <header className="flex justify-between items-end">
         <div>
           <h1 className="text-h1 text-on-background mb-2">Dashboard</h1>
-          <p className="text-on-surface-variant text-body-md">No data now</p>
+          <p className="text-on-surface-variant text-body-md">
+            {staffMembers.length > 0 || tasks.length > 0 
+              ? `Managing ${staffMembers.length} staff members and ${tasks.length} tasks`
+              : "No data now"
+            }
+          </p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -136,11 +203,11 @@ export default function AdminDashboard() {
             <span className="material-symbols-outlined text-primary">forum</span>
             Recent Replies
           </h3>
-          {replies.length === 0 ? (
+          {replyData.length === 0 ? (
             <EmptyState title="No data now" description="No replies available." />
           ) : (
             <div className="flex flex-col gap-4">
-              {replies.map((reply) => (
+              {replyData.map((reply: Reply) => (
                 <ReplyCard key={reply.id} reply={reply} />
               ))}
             </div>

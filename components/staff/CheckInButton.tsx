@@ -1,17 +1,16 @@
 "use client";
 
 import { useAttendance } from "@/hooks/useAttendance";
-import { WorkTimer } from "./WorkTimer";
 
 interface CheckInButtonProps {
   onStatusChange?: (isCheckedIn: boolean) => void;
 }
 
 /**
- * CheckInButton component with API integration and countdown timer
+ * CheckInButton component - Simple check-in to view tasks
  */
 export function CheckInButton({ onStatusChange }: CheckInButtonProps) {
-  const { attendance, loading, error, isCheckedIn, checkIn, checkOut, getRemainingSeconds } = useAttendance();
+  const { attendance, loading, error, isCheckedIn, checkIn, checkOut } = useAttendance();
 
   /**
    * Handle check-in/check-out button click
@@ -35,7 +34,6 @@ export function CheckInButton({ onStatusChange }: CheckInButtonProps) {
    */
   const getButtonText = (): string => {
     if (loading) return "Loading...";
-    if (attendance?.status === "on-break") return "End Break";
     return isCheckedIn ? "Check Out" : "Check In";
   };
 
@@ -86,31 +84,6 @@ export function CheckInButton({ onStatusChange }: CheckInButtonProps) {
         )}
       </button>
 
-      {/* Error Message */}
-      {error && (
-        <p className="text-red-400 text-body-sm text-center max-w-xs">
-          {error}
-        </p>
-      )}
-
-      {/* Work Timer - Only show when checked in */}
-      {isCheckedIn && attendance && (
-        <WorkTimer
-          remainingSeconds={getRemainingSeconds()}
-          isRunning={attendance.status === "checked-in"}
-        />
-      )}
-
-      {/* Check In Time Display */}
-      {attendance?.checkInTime && (
-        <p className="text-caps-xs text-outline">
-          Checked in at{" "}
-          {new Date(attendance.checkInTime).toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </p>
-      )}
     </div>
   );
 }

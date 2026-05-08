@@ -11,7 +11,7 @@ import { z } from 'zod';
 const updateTaskSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).optional(),
-  status: z.enum(['pending', 'in-progress', 'completed', 'cancelled']).optional(),
+  status: z.enum(['todo', 'in-progress', 'stuck', 'done']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
 });
 
@@ -168,8 +168,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         updates.startedAt = new Date();
       }
       
-      // Set completedAt when status changes to completed
-      if (validationResult.data.status === 'completed' && !task.completedAt) {
+      // Set completedAt when status changes to done
+      if (validationResult.data.status === 'done' && !task.completedAt) {
         updates.completedAt = new Date();
       }
     }

@@ -3,7 +3,7 @@ import mongoose, { Document, Model, Schema } from 'mongoose';
 /**
  * Task status enum
  */
-export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled';
+export type TaskStatus = 'todo' | 'in-progress' | 'stuck' | 'done';
 
 /**
  * Task priority enum
@@ -73,8 +73,8 @@ const TaskSchema = new Schema<ITask>(
     },
     status: {
       type: String,
-      enum: ['pending', 'in-progress', 'completed', 'cancelled'],
-      default: 'pending',
+      enum: ['todo', 'in-progress', 'stuck', 'done'],
+      default: 'todo',
     },
     priority: {
       type: String,

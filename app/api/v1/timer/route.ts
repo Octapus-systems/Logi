@@ -102,15 +102,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Start timer
+      // Start timer - status is now manually controlled by user
       task.isTimerRunning = true;
       task.timerStartedAt = now;
-      
-      // Update task status to in-progress if it's pending
-      if (task.status === 'pending') {
-        task.status = 'in-progress';
-        task.startedAt = now;
-      }
 
       await task.save();
 
@@ -127,9 +121,14 @@ export async function POST(request: NextRequest) {
         },
       });
 
-    } else {
-      // action === 'stop'
-      
+    } else if (action === 'stop') {
+      console.log('[Timer API] Stopping timer for task:', taskId);
+      console.log('[Timer API] Task state before:', {
+        isTimerRunning: task.isTimerRunning,
+        totalTimeSpent: task.totalTimeSpent,
+        timerStartedAt: task.timerStartedAt
+      });
+
       // Check if timer is running
       if (!task.isTimerRunning) {
         return NextResponse.json(
@@ -140,27 +139,43 @@ export async function POST(request: NextRequest) {
 
       // Calculate elapsed time for this session
       const sessionSeconds = Math.floor((now.getTime() - task.timerStartedAt!.getTime()) / 1000);
+      console.log('[Timer API] Session seconds calculated:', sessionSeconds);
       
       // Stop timer
       task.isTimerRunning = false;
       task.totalTimeSpent += sessionSeconds;
       task.timerStartedAt = undefined;
 
-      await task.save();
-
-      return NextResponse.json({
-        success: true,
-        message: 'Timer stopped successfully',
-        data: {
-          taskId: task._id.toString(),
-          isTimerRunning: task.isTimerRunning,
-          timerStartedAt: task.timerStartedAt,
-          status: task.status,
-          totalTimeSpent: task.totalTimeSpent,
-          sessionTime: sessionSeconds,
-          currentElapsed: task.totalTimeSpent,
-        },
+      console.log('[Timer API] Task state before save:', {
+        isTimerRunning: task.isTimerRunning,
+        totalTimeSpent: task.totalTimeSpent,
+        timerStartedAt: task.timerStartedAt
       });
+
+      try {
+        await task.save();
+        console.log('[Timer API] Task saved successfully');
+
+        return NextResponse.json({
+          success: true,
+          message: 'Timer stopped successfully',
+          data: {
+            taskId: task._id.toString(),
+            isTimerRunning: task.isTimerRunning,
+            timerStartedAt: task.timerStartedAt,
+            status: task.status,
+            totalTimeSpent: task.totalTimeSpent,
+            sessionTime: sessionSeconds,
+            currentElapsed: task.totalTimeSpent,
+          },
+        });
+      } catch (saveError) {
+        console.error('[Timer API] Error saving task:', saveError);
+        return NextResponse.json(
+          { success: false, message: 'Failed to save timer state', error: 'SAVE_ERROR' },
+          { status: 500 }
+        );
+      }
     }
   } catch (error) {
     console.error('POST /api/v1/timer error:', error);

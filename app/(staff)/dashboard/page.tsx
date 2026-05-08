@@ -19,6 +19,7 @@ export default function StaffDashboard() {
     fetchTasks,
     startTimer,
     stopTimer,
+    updateTaskStatus,
     addReply,
     formatTimeElapsed,
   } = useTasks();
@@ -55,6 +56,13 @@ export default function StaffDashboard() {
   const handleAddReply = useCallback(async (taskId: string, content: string) => {
     await addReply(taskId, content);
   }, [addReply]);
+
+  /**
+   * Handle task status change
+   */
+  const handleStatusChange = useCallback(async (taskId: string, status: "todo" | "in-progress" | "stuck" | "done") => {
+    await updateTaskStatus(taskId, status);
+  }, [updateTaskStatus]);
 
   // Load tasks when checked in
   useEffect(() => {
@@ -93,18 +101,6 @@ export default function StaffDashboard() {
           </p>
         )}
 
-        {/* Working hours info when checked in */}
-        {isCheckInComplete && attendance?.checkInTime && (
-          <div className="glass-card px-6 py-3 rounded-xl border border-white/10">
-            <p className="text-caps-xs text-outline">
-              Working Hours: {" "}
-              <span className="text-primary-container font-mono">
-                {formatTimeElapsed(attendance.totalWorkingHours || 0)}
-              </span>
-              {" "}completed
-            </p>
-          </div>
-        )}
       </section>
 
       {/* Task List Canvas - Only visible after check-in */}
@@ -142,6 +138,7 @@ export default function StaffDashboard() {
                   task={task}
                   onToggleTimer={handleToggleTimer}
                   onAddReply={handleAddReply}
+                  onStatusChange={handleStatusChange}
                   loading={loading}
                 />
               ))}

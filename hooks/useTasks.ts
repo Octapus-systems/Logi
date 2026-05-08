@@ -9,7 +9,7 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  status: "pending" | "in-progress" | "completed" | "cancelled";
+  status: "todo" | "in-progress" | "stuck" | "done";
   priority: "low" | "medium" | "high" | "urgent";
   assignedTo: {
     _id: string;
@@ -99,14 +99,13 @@ export function useTasks() {
         throw new Error(data.message || "Failed to start timer");
       }
 
-      // Update local task state
+      // Update local task state - status is now manually controlled
       setTasks((prev) =>
         prev.map((task) =>
           task.id === taskId
             ? {
                 ...task,
                 isTimerRunning: true,
-                status: "in-progress",
                 timeElapsed: data.data.currentElapsed,
               }
             : task
@@ -262,7 +261,7 @@ export function useTasks() {
    * Get active task count
    */
   const activeTaskCount = tasks.filter(
-    (t) => t.status === "in-progress" || t.status === "pending"
+    (t) => t.status === "in-progress" || t.status === "todo"
   ).length;
 
   return {

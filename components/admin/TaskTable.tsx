@@ -7,7 +7,7 @@ interface Task {
     avatar?: string;
     isUnassigned?: boolean;
   };
-  status: "in-progress" | "reviewing" | "pending";
+  status: "in-progress" | "reviewing" | "pending" | "done" | "stuck" | "todo";
   timeSpent: string;
   staffReply: string;
 }
@@ -22,12 +22,18 @@ export function TaskTable({ tasks }: TaskTableProps) {
       "in-progress": "bg-tertiary/10 text-tertiary",
       reviewing: "bg-primary/10 text-primary",
       pending: "bg-error/10 text-error",
+      done: "bg-success/10 text-success",
+      stuck: "bg-warning/10 text-warning",
+      todo: "bg-surface/10 text-on-surface",
     };
 
     const labels = {
       "in-progress": "In Progress",
       reviewing: "Reviewing",
       pending: "Pending",
+      done: "Completed",
+      stuck: "Stuck",
+      todo: "To Do",
     };
 
     return (
