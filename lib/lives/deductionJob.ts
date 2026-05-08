@@ -28,7 +28,7 @@ function getDeductionReferenceTime(
   
   if (lastReplyAt) {
     const replyTime = new Date(lastReplyAt).getTime();
-    if (replyTime > referenceTime.getTime()) {
+    if (!referenceTime || replyTime > referenceTime.getTime()) {
       referenceTime = new Date(lastReplyAt);
     }
   }
