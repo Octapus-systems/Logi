@@ -20,6 +20,32 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Local MongoDB (recommended for development)
+
+Some networks/ISPs block MongoDB Atlas connections (SRV/DNS or the MongoDB protocol). For development, run MongoDB locally and point `MONGO_URI` to it.
+
+### Option A: MongoDB Community Server (Windows)
+- Install MongoDB Community Server and run it as a Windows Service
+- Set `.env`:
+
+```env
+MONGO_URI=mongodb://localhost:27017/logi
+```
+
+### Option B: Docker (if installed)
+
+This repo includes `docker-compose.yml`.
+
+```bash
+docker compose up -d
+```
+
+Then seed users:
+
+```bash
+npx tsx scripts/seed-user.ts
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

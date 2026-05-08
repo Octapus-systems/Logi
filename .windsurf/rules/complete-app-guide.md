@@ -281,7 +281,7 @@ logi/
 - Admin panel: Data-rich, dashboard-style, information dense
 - Always show loading skeletons — never blank screens while loading
 - Always show meaningful empty states when there is no data
-- Mobile responsive by default for all pages
+- All pages must be fully responsive — the app needs to work seamlessly across mobile, tablet, and desktop viewports
 - Use consistent spacing, typography, and border radius throughout
 
 # ------------------------------------------------------------
