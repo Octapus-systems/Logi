@@ -32,6 +32,7 @@ interface TaskLog {
   id: string;
   title: string;
   completedAt: string;
+  totalTimeSpent: number;
 }
 
 interface AttendanceLog {
@@ -141,6 +142,13 @@ export default function AttendancePage() {
 
   const livesToHours = (lives: number) => {
     return lives; // 1 life = 1 hour rule
+  };
+
+  const formatSeconds = (totalSeconds: number) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   // Client-side task filtering and pagination
@@ -288,10 +296,16 @@ export default function AttendancePage() {
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{task.title}</h4>
-                        <p className="text-xs text-on-surface-variant flex items-center gap-1.5 mt-1">
-                          <Clock className="w-3 h-3" />
-                          Marked as done at {format(new Date(task.completedAt), "hh:mm a")}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                          <p className="text-xs text-on-surface-variant flex items-center gap-1.5">
+                            <Clock className="w-3 h-3" />
+                            Marked as done at {format(new Date(task.completedAt), "hh:mm a")}
+                          </p>
+                          <p className="text-xs text-primary/80 font-medium flex items-center gap-1.5">
+                            <Clock className="w-3 h-3" />
+                            Time taken: {formatSeconds(task.totalTimeSpent)}
+                          </p>
+                        </div>
                       </div>
                     </div>
                     <div className="text-[10px] font-bold text-outline-variant bg-white/5 px-2.5 py-1 rounded-full uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">

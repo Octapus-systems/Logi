@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
           id: t._id,
           title: t.title,
           completedAt: t.lockedAt || t.completedAt,
+          totalTimeSpent: t.totalTimeSpent || 0,
         })),
         attendanceStatus: attendance?.status || 'absent',
         checkInTime: attendance?.checkInTime,
