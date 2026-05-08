@@ -197,7 +197,7 @@ export function useLives() {
 
     // Derived state
     isHalfDay: livesStatus?.isHalfDay || false,
-    minutesUntilDeduction: livesStatus?.minutesUntilDeduction || null,
+    minutesUntilDeduction: livesStatus?.minutesUntilDeduction ?? null,
     canLoseLife: livesStatus?.isCheckedIn && (livesStatus?.lives || 0) > 0,
   };
 }

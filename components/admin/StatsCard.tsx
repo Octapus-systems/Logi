@@ -8,7 +8,7 @@ interface StatsCardProps {
   glow?: boolean;
 }
 
-export function StatsCard({ title, value, icon, variant = "default", glow }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, variant = "default", glow }: StatsCardProps) {
   const valueColorClass = {
     default: "text-on-surface",
     primary: "text-primary",
@@ -30,7 +30,7 @@ export function StatsCard({ title, value, icon, variant = "default", glow }: Sta
       <p className="text-on-surface-variant text-caps-xs uppercase mb-2 sm:mb-4 truncate">{title}</p>
       <div className="flex items-end justify-between">
         <span className={`text-h1 sm:text-h1 ${valueColorClass} text-xl sm:text-4xl`}>{value}</span>
-        <icon className={`w-5 h-5 sm:w-6 sm:h-6 mb-1 ${iconColorClass}`} />
+        <Icon className={`w-5 h-5 sm:w-6 sm:h-6 mb-1 ${iconColorClass}`} />
       </div>
     </div>
   );

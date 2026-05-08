@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Task from '@/models/Task';
-import { recordTaskReply } from '@/lib/lives/deductionJob';
+import { resetActivityTimer } from '@/lib/lives/deductionJob';
 import { z } from 'zod';
 
 /**
@@ -182,6 +182,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       if (validationResult.data.status === 'done' && !task.completedAt) {
         updates.completedAt = new Date();
         updates.lockedAt = new Date();
+        // Record task completion to reset life deduction countdown
+        await resetActivityTimer(session.user.id);
       }
     }
 
@@ -295,8 +297,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     await task.save();
 
-    // Record the task reply to reset life deduction countdown
-    await recordTaskReply(session.user.id);
+    // Record the task activity to reset life deduction countdown
+    await resetActivityTimer(session.user.id);
 
     const updatedTask = await Task.findById(taskId)
       .populate('assignedTo', 'name email')

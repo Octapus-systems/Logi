@@ -22,9 +22,9 @@ function hasThirtyMinutesPassed(referenceTime: Date | null): boolean {
 function getDeductionReferenceTime(
   lastReplyAt: Date | null | undefined,
   lastDeductionAt: Date | null | undefined,
-  checkInTime: Date
-): Date {
-  let referenceTime = checkInTime;
+  checkInTime: Date | null | undefined
+): Date | null {
+  let referenceTime: Date | null = checkInTime ? new Date(checkInTime) : null;
   
   if (lastReplyAt) {
     const replyTime = new Date(lastReplyAt).getTime();
@@ -35,7 +35,7 @@ function getDeductionReferenceTime(
   
   if (lastDeductionAt) {
     const deductionTime = new Date(lastDeductionAt).getTime();
-    if (deductionTime > referenceTime.getTime()) {
+    if (!referenceTime || deductionTime > referenceTime.getTime()) {
       referenceTime = new Date(lastDeductionAt);
     }
   }
@@ -50,7 +50,7 @@ function getDeductionReferenceTime(
  * Logic:
  * 1. Find all staff with status 'checked-in' and lives > 0
  * 2. For each staff, check if 30 minutes have passed since last activity
- * 3. If no reply in 30 minutes, deduct 1 life
+ * 3. If no activity in 30 minutes, deduct 0.5 life
  * 4. Record the deduction in LifeHistory
  * 5. Update isHalfDay status if lives <= 2
  */
@@ -95,8 +95,12 @@ export async function processLifeDeductions(): Promise<{
         const referenceTime = getDeductionReferenceTime(
           attendance.lastReplyAt || null,
           attendance.lastDeductionAt || null,
-          new Date(checkInTime)
+          attendance.checkInTime || attendance.createdAt
         );
+
+        if (!referenceTime) {
+          continue;
+        }
 
         // Check if 30 minutes have passed since reference time
         if (!hasThirtyMinutesPassed(referenceTime)) {
@@ -121,7 +125,7 @@ export async function processLifeDeductions(): Promise<{
           date: today,
           action: 'deduct',
           amount: 0.5,
-          reason: 'No task reply within 30 minutes',
+          reason: 'Inactivity for 30 minutes',
           previousLives,
           newLives,
           timestamp: new Date(),
@@ -149,10 +153,13 @@ export async function processLifeDeductions(): Promise<{
 }
 
 /**
- * Record a task reply to pause life deductions
- * This should be called whenever a staff member adds a reply to any task
+ * Reset activity timer (pauses life deductions)
+ * This should be called whenever a staff member does any task activity:
+ * - Adding a reply to a task
+ * - Changing task status to 'done'
+ * - Starting/Stopping a task timer
  */
-export async function recordTaskReply(userId: string): Promise<boolean> {
+export async function resetActivityTimer(userId: string): Promise<boolean> {
   try {
     const today = getToday();
 
@@ -167,14 +174,14 @@ export async function recordTaskReply(userId: string): Promise<boolean> {
       return false;
     }
 
-    // Update last reply timestamp
+    // Update last reply timestamp (used as reference for inactivity)
     attendance.lastReplyAt = new Date();
     await attendance.save();
 
-    console.log(`[DeductionJob] Recorded task reply for user ${userId}, deduction countdown reset`);
+    console.log(`[DeductionJob] Reset activity timer for user ${userId}`);
     return true;
   } catch (error) {
-    console.error(`[DeductionJob] Error recording task reply for user ${userId}:`, error);
+    console.error(`[DeductionJob] Error resetting activity timer for user ${userId}:`, error);
     return false;
   }
 }

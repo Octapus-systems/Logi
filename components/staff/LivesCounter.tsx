@@ -164,22 +164,32 @@ export function LivesCounter() {
       )}
 
       {/* Countdown - Hidden when on break */}
-      {countdown !== null && countdown > 0 && livesStatus.lives > 0 && !isOnBreak && (
-        <div className="flex items-center justify-between text-caps-xs text-outline">
-          <span>Next deduction in:</span>
-          <span className={`font-mono ${countdownWarning}`}>
-            {countdown <= 0
-              ? "DEDUCTING..."
-              : `${Math.ceil(countdown).toString().padStart(2, "0")}m`}
+      {countdown !== null && countdown >= 0 && livesStatus.lives > 0 && !isOnBreak && (
+        <div className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 border border-white/5">
+          <div className="flex items-center gap-2">
+            <svg className={`w-4 h-4 ${countdown <= 5 ? 'text-red-400' : 'text-outline'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-caps-xs text-outline font-medium">Activity Timer</span>
+          </div>
+          <span className={`font-mono text-body-md font-bold tracking-wider ${countdownWarning}`}>
+            {formatCountdown(countdown)}
           </span>
         </div>
       )}
 
       {/* Break Status */}
       {isOnBreak && (
-        <div className="flex items-center justify-between text-caps-xs text-amber-400">
-          <span>Countdown paused</span>
-          <span className="font-mono">{countdown !== null ? `${Math.ceil(countdown).toString().padStart(2, "0")}m` : "--"}</span>
+        <div className="flex items-center justify-between bg-amber-500/10 rounded-xl px-4 py-3 border border-amber-500/20">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-caps-xs text-amber-400 font-medium">On Break</span>
+          </div>
+          <span className="font-mono text-body-md font-bold text-amber-400">
+            {formatCountdown(countdown)}
+          </span>
         </div>
       )}
 
