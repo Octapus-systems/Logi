@@ -95,6 +95,22 @@ export async function POST(request: NextRequest) {
     const now = new Date();
 
     if (action === 'start') {
+      // Find and stop any other running timers for this user
+      const runningTask = await Task.findOne({
+        assignedTo: session.user.id,
+        isTimerRunning: true,
+        _id: { $ne: taskId }
+      });
+
+      if (runningTask && runningTask.timerStartedAt) {
+        const sessionSeconds = Math.floor((now.getTime() - runningTask.timerStartedAt.getTime()) / 1000);
+        runningTask.isTimerRunning = false;
+        runningTask.totalTimeSpent += sessionSeconds;
+        runningTask.timerStartedAt = undefined;
+        await runningTask.save();
+        console.log(`[Timer API] Auto-stopped task ${runningTask._id} for user ${session.user.id}`);
+      }
+
       // Check if timer is already running
       if (task.isTimerRunning) {
         return NextResponse.json(
