@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
         status: attendance.status,
         checkInTime: attendance.checkInTime,
         isOnBreak: attendance.isOnBreak,
+        isReCheckedIn: attendance.isReCheckedIn || false,
       },
     });
   } catch (error) {
@@ -116,6 +117,23 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
+    const today = getToday();
+    const existingAttendance = await Attendance.findOne({
+      userId: session.user.id,
+      date: today,
+    });
+
+    if (existingAttendance && existingAttendance.status === 'checked-out') {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'You have already checked out for today. Only an admin can re-check you in.', 
+          error: 'ALREADY_CHECKED_OUT' 
+        },
+        { status: 403 }
+      );
+    }
+
     // Initialize lives on check-in using the dedicated function
     const initialized = await initializeLivesOnCheckIn(session.user.id);
     
@@ -127,7 +145,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch the updated attendance record
-    const today = getToday();
     const attendance = await Attendance.findOne({
       userId: session.user.id,
       date: today,
@@ -221,24 +238,16 @@ export async function PATCH(request: NextRequest) {
       });
       attendance.isOnBreak = false;
       attendance.currentBreakStart = undefined;
-      attendance.remainingCountdownSeconds = 0;
-    }
-
-    // Rule 2: Check if staff has at least one task marked as Done
-    const completedTaskCount = await Task.countDocuments({
-      assignedTo: session.user.id,
-      status: 'done',
-    });
-
-    if (completedTaskCount === 0) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'You cannot check out without completing at least one task. Please mark a task as Done before checking out.', 
-          error: 'NO_COMPLETED_TASKS' 
-        },
-        { status: 403 }
-      );
+      // Keep remainingCountdownSeconds as it is (it was set when break started)
+    } else {
+      // If not on break, calculate and store the remaining seconds for resumption
+      const referenceTime = attendance.lastReplyAt || attendance.lastDeductionAt || attendance.checkInTime || attendance.createdAt;
+      if (referenceTime) {
+        const thirtyMinutesInMs = 30 * 60 * 1000;
+        const elapsedMs = now.getTime() - new Date(referenceTime).getTime();
+        const remainingMs = Math.max(0, thirtyMinutesInMs - elapsedMs);
+        attendance.remainingCountdownSeconds = Math.floor(remainingMs / 1000);
+      }
     }
 
     // Update existing record - proceed with checkout
@@ -325,6 +334,24 @@ export async function PUT(request: NextRequest) {
     const { action, remainingSeconds } = validationResult.data;
 
     if (action === 'start') {
+      // Rule: Check if staff has at least one task marked as Done today
+      const completedTaskCount = await Task.countDocuments({
+        assignedTo: session.user.id,
+        status: 'done',
+        completedAt: { $gte: today },
+      });
+
+      if (completedTaskCount === 0) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'You must complete at least 1 task before taking a break.', 
+            error: 'NO_COMPLETED_TASKS' 
+          },
+          { status: 403 }
+        );
+      }
+
       // Start break
       if (attendance.isOnBreak) {
         return NextResponse.json(

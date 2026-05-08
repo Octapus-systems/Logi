@@ -126,11 +126,11 @@ export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, load
 
   return (
     <div
-      className={`glass-card p-6 rounded-2xl space-y-4 transition-all hover:bg-white/10 ${
+      className={`glass-card p-4 sm:p-6 rounded-2xl space-y-4 transition-all hover:bg-white/10 ${
         isActive ? "bg-white/5" : "opacity-80 hover:opacity-100"
       } ${statusBadge.className}`}
     >
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+      <div className="flex flex-col gap-4">
         {/* Task Info */}
         <div className="space-y-2 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -174,8 +174,8 @@ export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, load
               • {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
             </span>
           </div>
-          <h3 className="text-h3 text-on-surface">{task.title}</h3>
-          <p className="text-body-md text-on-surface-variant max-w-xl">
+          <h3 className="text-lg sm:text-2xl font-semibold text-on-surface">{task.title}</h3>
+          <p className="text-sm sm:text-base text-on-surface-variant">
             {task.description}
           </p>
 
@@ -185,15 +185,15 @@ export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, load
           </p>
         </div>
 
-        {/* Timer Section */}
-        <div className="flex flex-col items-end gap-2">
+        {/* Timer Section — full width on mobile */}
+        <div className="flex items-center justify-between gap-3">
           <div
-            className={`flex items-center gap-4 px-6 py-2 rounded-xl border ${
+            className={`flex items-center gap-3 px-4 py-2 rounded-xl border flex-1 ${
               isActive ? "bg-black/40 border-white/5" : "bg-black/20 border-white/5"
             }`}
           >
             <span
-              className={`font-mono text-h3 font-bold ${
+              className={`font-mono text-lg sm:text-2xl font-bold tabular-nums ${
                 isActive ? "text-primary-container" : "text-outline"
               }`}
             >
@@ -202,7 +202,7 @@ export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, load
             <button
               onClick={() => onToggleTimer(task.id)}
               disabled={loading || task.status === "done"}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed ml-auto ${
                 task.isTimerRunning
                   ? "bg-red-500/20 text-red-400 border border-red-500/50"
                   : isActive
@@ -211,22 +211,21 @@ export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, load
               }`}
             >
               {task.isTimerRunning ? (
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
                 </svg>
               ) : (
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z" />
                 </svg>
               )}
             </button>
           </div>
-
-          {/* Total Time Spent */}
-          <p className="text-caps-xs text-outline">
-            Total: {formatTime(task.totalTimeSpent + (task.isTimerRunning ? displayTime - task.timeElapsed : 0))}
-          </p>
         </div>
+        {/* Total Time Spent */}
+        <p className="text-xs text-outline text-right">
+          Total: {formatTime(task.totalTimeSpent + (task.isTimerRunning ? displayTime - task.timeElapsed : 0))}
+        </p>
       </div>
 
       {/* Replies Section */}

@@ -12,7 +12,7 @@ import { z } from 'zod';
 const adjustLivesSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
   action: z.enum(['give', 'remove']),
-  amount: z.number().int().min(1).max(4).default(1),
+  amount: z.number().min(0.5).max(4).default(1),
   reason: z.string().min(1).max(500),
 });
 

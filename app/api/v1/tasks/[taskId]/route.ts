@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Task from '@/models/Task';
-import { recordTaskReply } from '@/lib/lives/deductionJob';
+import Attendance from '@/models/Attendance';
+import { resetActivityTimer } from '@/lib/lives/deductionJob';
 import { z } from 'zod';
 
 /**
@@ -45,6 +46,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { taskId } = await params;
 
     await connectDB();
+
+    // Check attendance status for staff
+    if (session.user.role === 'staff') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const attendance = await Attendance.findOne({
+        userId: session.user.id,
+        date: today,
+      });
+
+      if (attendance && attendance.status === 'checked-out') {
+        return NextResponse.json(
+          { success: false, message: 'You have checked out for today. Your work is complete.', error: 'CHECKED_OUT' },
+          { status: 403 }
+        );
+      }
+    }
 
     const task = await Task.findById(taskId)
       .populate('assignedTo', 'name email')
@@ -133,6 +151,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     await connectDB();
 
+    // Check attendance status for staff
+    if (session.user.role === 'staff') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const attendance = await Attendance.findOne({
+        userId: session.user.id,
+        date: today,
+      });
+
+      if (attendance && attendance.status === 'checked-out') {
+        return NextResponse.json(
+          { success: false, message: 'You have checked out for today. Your work is complete.', error: 'CHECKED_OUT' },
+          { status: 403 }
+        );
+      }
+    }
+
     const task = await Task.findById(taskId);
 
     if (!task) {
@@ -182,6 +217,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       if (validationResult.data.status === 'done' && !task.completedAt) {
         updates.completedAt = new Date();
         updates.lockedAt = new Date();
+        // Record task completion to reset life deduction countdown
+        await resetActivityTimer(session.user.id);
       }
     }
 
@@ -270,6 +307,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     await connectDB();
 
+    // Check attendance status for staff
+    if (session.user.role === 'staff') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const attendance = await Attendance.findOne({
+        userId: session.user.id,
+        date: today,
+      });
+
+      if (attendance && attendance.status === 'checked-out') {
+        return NextResponse.json(
+          { success: false, message: 'You have checked out for today. Your work is complete.', error: 'CHECKED_OUT' },
+          { status: 403 }
+        );
+      }
+    }
+
     const task = await Task.findById(taskId);
 
     if (!task) {
@@ -295,8 +349,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     await task.save();
 
-    // Record the task reply to reset life deduction countdown
-    await recordTaskReply(session.user.id);
+    // Record the task activity to reset life deduction countdown
+    await resetActivityTimer(session.user.id);
 
     const updatedTask = await Task.findById(taskId)
       .populate('assignedTo', 'name email')

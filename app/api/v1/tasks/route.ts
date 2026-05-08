@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Task from '@/models/Task';
+import Attendance from '@/models/Attendance';
 import { z } from 'zod';
 
 /**
@@ -31,6 +32,31 @@ export async function GET(request: NextRequest) {
     }
 
     await connectDB();
+
+    // Check attendance status for staff
+    if (session.user.role === 'staff') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const attendance = await Attendance.findOne({
+        userId: session.user.id,
+        date: today,
+      });
+
+      if (attendance && attendance.status === 'checked-out') {
+        return NextResponse.json({
+          success: true,
+          message: 'You have checked out for today. Your work is complete.',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0,
+          },
+          isLocked: true
+        });
+      }
+    }
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');

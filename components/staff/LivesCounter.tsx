@@ -6,21 +6,38 @@ import { useLives } from "@/hooks/useLives";
 /**
  * Heart icon component for displaying lives
  */
-function HeartIcon({ filled, className }: { filled: boolean; className?: string }) {
+function HeartIcon({ fillType, className }: { fillType: 'full' | 'half' | 'empty'; className?: string }) {
   return (
-    <svg
-      className={`w-6 h-6 ${className}`}
-      fill={filled ? "currentColor" : "none"}
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={filled ? 0 : 2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-      />
-    </svg>
+    <div className={`relative w-6 h-6 ${className}`}>
+      {/* Background (Outline) */}
+      <svg
+        className="absolute inset-0 w-full h-full"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+        />
+      </svg>
+      
+      {/* Fill */}
+      {(fillType === 'full' || fillType === 'half') && (
+        <svg
+          className="absolute inset-0 w-full h-full"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          style={fillType === 'half' ? { clipPath: 'inset(0 50% 0 0)' } : {}}
+        >
+          <path
+            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+          />
+        </svg>
+      )}
+    </div>
   );
 }
 
@@ -76,7 +93,7 @@ export function LivesCounter() {
         <div className="flex items-center gap-3">
           <div className="flex gap-1 opacity-30">
             {[1, 2, 3, 4].map((i) => (
-              <HeartIcon key={i} filled={false} className="text-outline" />
+              <HeartIcon key={i} fillType="empty" className="text-outline" />
             ))}
           </div>
           <div className="flex-1">
@@ -108,17 +125,23 @@ export function LivesCounter() {
       {/* Lives Display */}
       <div className="flex items-center gap-3 mb-3">
         <div className="flex gap-1">
-          {[1, 2, 3, 4].map((i) => (
-            <HeartIcon
-              key={i}
-              filled={i <= livesStatus.lives}
-              className={i <= livesStatus.lives ? warningColor : "text-outline/30"}
-            />
-          ))}
+          {[1, 2, 3, 4].map((i) => {
+            const isFull = i <= livesStatus.lives;
+            const isHalf = !isFull && i - 0.5 <= livesStatus.lives;
+            const fillType = isFull ? 'full' : isHalf ? 'half' : 'empty';
+            
+            return (
+              <HeartIcon
+                key={i}
+                fillType={fillType}
+                className={fillType !== 'empty' ? warningColor : "text-outline/30"}
+              />
+            );
+          })}
         </div>
         <div className="flex-1">
           <p className={`text-h3 font-bold ${warningColor}`}>
-            {livesStatus.lives} / {livesStatus.maxLives}
+            {livesStatus.lives.toFixed(1)} / {livesStatus.maxLives.toFixed(1)}
           </p>
         </div>
       </div>
@@ -132,7 +155,7 @@ export function LivesCounter() {
         </div>
       )}
 
-      {livesStatus.lives === 1 && (
+      {livesStatus.lives <= 1 && livesStatus.lives > 0 && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2 mb-3">
           <p className="text-caps-xs text-red-400 text-center">
             WARNING: Reply to a task soon to avoid losing your last life!
@@ -141,22 +164,32 @@ export function LivesCounter() {
       )}
 
       {/* Countdown - Hidden when on break */}
-      {countdown !== null && countdown > 0 && livesStatus.lives > 0 && !isOnBreak && (
-        <div className="flex items-center justify-between text-caps-xs text-outline">
-          <span>Next deduction in:</span>
-          <span className={`font-mono ${countdownWarning}`}>
-            {countdown <= 0
-              ? "DEDUCTING..."
-              : `${Math.ceil(countdown).toString().padStart(2, "0")}m`}
+      {countdown !== null && countdown >= 0 && livesStatus.lives > 0 && !isOnBreak && (
+        <div className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 border border-white/5">
+          <div className="flex items-center gap-2">
+            <svg className={`w-4 h-4 ${countdown <= 5 ? 'text-red-400' : 'text-outline'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-caps-xs text-outline font-medium">Activity Timer</span>
+          </div>
+          <span className={`font-mono text-body-md font-bold tracking-wider ${countdownWarning}`}>
+            {formatCountdown(countdown)}
           </span>
         </div>
       )}
 
       {/* Break Status */}
       {isOnBreak && (
-        <div className="flex items-center justify-between text-caps-xs text-amber-400">
-          <span>Countdown paused</span>
-          <span className="font-mono">{countdown !== null ? `${Math.ceil(countdown).toString().padStart(2, "0")}m` : "--"}</span>
+        <div className="flex items-center justify-between bg-amber-500/10 rounded-xl px-4 py-3 border border-amber-500/20">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-caps-xs text-amber-400 font-medium">On Break</span>
+          </div>
+          <span className="font-mono text-body-md font-bold text-amber-400">
+            {formatCountdown(countdown)}
+          </span>
         </div>
       )}
 
