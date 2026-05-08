@@ -65,13 +65,17 @@ export default function StaffDashboard() {
     await updateTaskStatus(taskId, status);
   }, [updateTaskStatus]);
 
-  // Load tasks when checked in
+  // Initial task load on mount
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
+  // Synchronize check-in status
   useEffect(() => {
     if (isCheckedIn) {
-      fetchTasks();
       setIsCheckInComplete(true);
     }
-  }, [isCheckedIn, fetchTasks]);
+  }, [isCheckedIn]);
 
   const currentDate = new Date().toLocaleDateString("en-US", {
     month: "long",
