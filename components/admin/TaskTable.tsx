@@ -1,3 +1,5 @@
+import { Search, User, UserPlus, Clock } from "lucide-react";
+
 interface Task {
   id: string;
   name: string;
@@ -50,9 +52,7 @@ export function TaskTable({ tasks }: TaskTableProps) {
       {/* Filter Bar */}
       <div className="flex justify-end mb-4 sm:mb-6">
         <div className="bg-surface-container-high px-3 sm:px-4 py-2 rounded-lg border border-white/5 flex items-center gap-2 w-full sm:w-auto">
-          <span className="material-symbols-outlined text-[16px] sm:text-[18px] text-on-surface-variant">
-            search
-          </span>
+          <Search className="w-4 h-4 text-on-surface-variant" />
           <input
             className="bg-transparent border-none outline-none text-label-sm w-full text-on-surface placeholder:text-on-surface-variant"
             placeholder="Filter tasks..."
@@ -85,9 +85,7 @@ export function TaskTable({ tasks }: TaskTableProps) {
                     {task.assignedTo.isUnassigned ? (
                       <>
                         <div className="w-6 h-6 rounded-full bg-surface-container-high flex items-center justify-center border border-white/10">
-                          <span className="material-symbols-outlined text-[14px] text-on-surface-variant">
-                            person_search
-                          </span>
+                          <UserPlus className="w-3.5 h-3.5 text-on-surface-variant" />
                         </div>
                         <span className="text-label-sm text-outline">Unassigned</span>
                       </>
@@ -101,9 +99,7 @@ export function TaskTable({ tasks }: TaskTableProps) {
                           />
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-surface-container-high flex items-center justify-center border border-white/10">
-                            <span className="material-symbols-outlined text-[12px] text-on-surface-variant">
-                              person
-                            </span>
+                            <User className="w-3.5 h-3.5 text-on-surface-variant" />
                           </div>
                         )}
                         <span className="text-label-sm text-on-surface truncate max-w-[100px]">{task.assignedTo.name}</span>
@@ -142,9 +138,7 @@ export function TaskTable({ tasks }: TaskTableProps) {
               {task.assignedTo.isUnassigned ? (
                 <>
                   <div className="w-6 h-6 rounded-full bg-surface-container-high flex items-center justify-center border border-white/10">
-                    <span className="material-symbols-outlined text-[14px] text-on-surface-variant">
-                      person_search
-                    </span>
+                    <UserPlus className="w-3.5 h-3.5 text-on-surface-variant" />
                   </div>
                   <span className="text-label-sm text-outline">Unassigned</span>
                 </>
@@ -158,9 +152,7 @@ export function TaskTable({ tasks }: TaskTableProps) {
                     />
                   ) : (
                     <div className="w-6 h-6 rounded-full bg-surface-container-high flex items-center justify-center border border-white/10">
-                      <span className="material-symbols-outlined text-[12px] text-on-surface-variant">
-                        person
-                      </span>
+                      <User className="w-3.5 h-3.5 text-on-surface-variant" />
                     </div>
                   )}
                   <span className="text-label-sm text-on-surface">{task.assignedTo.name}</span>
@@ -171,7 +163,7 @@ export function TaskTable({ tasks }: TaskTableProps) {
             {/* Time and Reply */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[14px] text-on-surface-variant">schedule</span>
+                <Clock className="w-3.5 h-3.5 text-on-surface-variant" />
                 <span className="text-label-sm text-on-surface-variant">{task.timeSpent}</span>
               </div>
               {task.staffReply && (

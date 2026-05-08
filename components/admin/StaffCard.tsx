@@ -1,5 +1,7 @@
 "use client";
 
+import { User, Heart } from "lucide-react";
+
 interface StaffMember {
   id: string;
   name: string;
@@ -50,9 +52,7 @@ export function StaffCard({ staff, onLifeCountChange }: StaffCardProps) {
               />
             ) : (
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-surface-container-high flex items-center justify-center border border-white/10">
-                <span className="material-symbols-outlined text-on-surface-variant text-xl sm:text-2xl">
-                  person
-                </span>
+                <User className="text-on-surface-variant w-6 h-6 sm:w-8 sm:h-8" />
               </div>
             )}
             {staff.isOnline && (
@@ -76,15 +76,12 @@ export function StaffCard({ staff, onLifeCountChange }: StaffCardProps) {
         {/* Life Icons - Responsive */}
         <div className="flex items-center gap-0.5 bg-primary/10 px-1.5 sm:px-2 py-1 rounded-full flex-shrink-0">
           {Array.from({ length: Math.min(staff.maxLives || 5, 5) }).map((_, index) => (
-            <span
+            <Heart
               key={index}
-              className="material-symbols-outlined text-primary text-[12px] sm:text-[14px]"
-              style={{
-                fontVariationSettings: index < (staff.lifeCount || 0) ? "'FILL' 1" : "'FILL' 0",
-              }}
-            >
-              favorite
-            </span>
+              className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${
+                index < (staff.lifeCount || 0) ? "fill-primary text-primary" : "text-primary/20"
+              }`}
+            />
           ))}
           {(staff.maxLives || 0) > 5 && (
             <span className="text-[10px] text-primary ml-1">+{(staff.maxLives || 0) - 5}</span>

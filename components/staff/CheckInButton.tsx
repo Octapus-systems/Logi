@@ -67,7 +67,7 @@ export function CheckInButton({ onStatusChange }: CheckInButtonProps) {
    * Get check-in/out button color based on state
    */
   const getButtonClass = (): string => {
-    const baseClass = "font-h3 text-h3 px-16 py-4 rounded-full transform hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed";
+    const baseClass = "font-semibold text-base sm:text-xl px-10 sm:px-16 py-3 sm:py-4 rounded-full transform hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed";
 
     if (isCheckedIn) {
       return `${baseClass} bg-gradient-to-br from-red-500 to-red-700 text-white shadow-lg shadow-red-500/30`;
@@ -88,7 +88,7 @@ export function CheckInButton({ onStatusChange }: CheckInButtonProps) {
    * Get break button color
    */
   const getBreakButtonClass = (): string => {
-    const baseClass = "font-h3 text-h3 px-8 py-3 rounded-full transform hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed";
+    const baseClass = "font-semibold text-sm sm:text-base px-6 sm:px-8 py-2.5 sm:py-3 rounded-full transform hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed";
 
     if (isOnBreak) {
       return `${baseClass} bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-lg shadow-amber-500/30`;

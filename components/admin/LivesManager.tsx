@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useLives, type StaffLivesData } from "@/hooks/useLives";
+import { X, RefreshCw } from "lucide-react";
 
-/**
- * Heart icon for lives display
- */
 function HeartIcon({ filled, className }: { filled: boolean; className?: string }) {
   return (
     <svg
@@ -24,17 +22,8 @@ function HeartIcon({ filled, className }: { filled: boolean; className?: string 
   );
 }
 
-/**
- * LivesManager component - Admin interface for managing staff lives
- */
 export function LivesManager() {
-  const {
-    allStaffLives,
-    loading,
-    error,
-    fetchAllStaffLives,
-    adjustLives,
-  } = useLives();
+  const { allStaffLives, loading, error, fetchAllStaffLives, adjustLives } = useLives();
 
   const [selectedStaff, setSelectedStaff] = useState<StaffLivesData | null>(null);
   const [actionType, setActionType] = useState<"give" | "remove">("give");
@@ -43,23 +32,24 @@ export function LivesManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [adjustmentError, setAdjustmentError] = useState<string | null>(null);
   const [adjustmentSuccess, setAdjustmentSuccess] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Fetch staff lives on mount
+  useEffect(() => { fetchAllStaffLives(); }, [fetchAllStaffLives]);
   useEffect(() => {
-    fetchAllStaffLives();
-  }, [fetchAllStaffLives]);
-
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchAllStaffLives();
-    }, 30000);
+    const interval = setInterval(() => fetchAllStaffLives(), 30000);
     return () => clearInterval(interval);
   }, [fetchAllStaffLives]);
 
-  /**
-   * Open adjustment modal for a staff member
-   */
+  // Lock body scroll when modal open
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isModalOpen]);
+
   const openAdjustModal = (staff: StaffLivesData, action: "give" | "remove") => {
     setSelectedStaff(staff);
     setActionType(action);
@@ -70,17 +60,13 @@ export function LivesManager() {
     setIsModalOpen(true);
   };
 
-  /**
-   * Handle lives adjustment
-   */
   const handleAdjustLives = async () => {
     if (!selectedStaff || !reason.trim()) return;
-
+    setSubmitting(true);
     setAdjustmentError(null);
     setAdjustmentSuccess(null);
-
     const result = await adjustLives(selectedStaff.userId, actionType, amount, reason.trim());
-
+    setSubmitting(false);
     if (result) {
       setAdjustmentSuccess(
         `Successfully ${actionType === "give" ? "gave" : "removed"} ${amount} life${amount > 1 ? "s" : ""}`
@@ -88,24 +74,18 @@ export function LivesManager() {
       setTimeout(() => {
         setIsModalOpen(false);
         setAdjustmentSuccess(null);
-      }, 1500);
+      }, 1200);
     } else {
       setAdjustmentError("Failed to adjust lives. Staff may have reached max/min lives.");
     }
   };
 
-  /**
-   * Get status color based on lives
-   */
   const getStatusColor = (lives: number, isHalfDay: boolean): string => {
     if (lives <= 1) return "text-red-400 bg-red-500/10 border-red-500/30";
     if (isHalfDay) return "text-yellow-400 bg-yellow-500/10 border-yellow-500/30";
     return "text-green-400 bg-green-500/10 border-green-500/30";
   };
 
-  /**
-   * Format time since last activity
-   */
   const formatTimeSince = (dateString: string | null): string => {
     if (!dateString) return "Never";
     const date = new Date(dateString);
@@ -113,7 +93,6 @@ export function LivesManager() {
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
-
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
@@ -126,11 +105,7 @@ export function LivesManager() {
         <div className="flex items-center justify-center h-40">
           <svg className="animate-spin h-8 w-8 text-primary" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
         </div>
       </div>
@@ -138,192 +113,226 @@ export function LivesManager() {
   }
 
   return (
-    <div className="glass-card p-6 rounded-2xl">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-h3 text-on-surface">Staff Lives Status</h2>
-        <button
-          onClick={() => fetchAllStaffLives()}
-          disabled={loading}
-          className="px-4 py-2 bg-surface-container-high rounded-xl text-caps-xs text-on-surface hover:bg-white/10 transition-colors disabled:opacity-50"
-        >
-          {loading ? "Refreshing..." : "Refresh"}
-        </button>
+    <>
+      <div className="glass-card p-4 sm:p-6 rounded-2xl">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <h2 className="text-lg sm:text-2xl font-semibold text-on-surface">Staff Lives Status</h2>
+          <button
+            onClick={() => fetchAllStaffLives()}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-2 bg-surface-container-high rounded-xl text-xs text-on-surface hover:bg-white/10 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">{loading ? "Refreshing..." : "Refresh"}</span>
+          </button>
+        </div>
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-4">
+            <p className="text-xs text-red-400">{error}</p>
+          </div>
+        )}
+
+        {allStaffLives.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-base text-on-surface-variant">No staff currently checked in</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {allStaffLives.map((staff) => (
+              <div
+                key={staff.userId}
+                className="flex flex-wrap items-center gap-3 p-3 sm:p-4 bg-surface-container-high/50 rounded-xl"
+              >
+                {/* Staff Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-on-surface truncate">{staff.name}</p>
+                  <p className="text-xs text-outline truncate">{staff.email}</p>
+                </div>
+
+                {/* Lives Display */}
+                <div className="flex items-center gap-1.5">
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4].map((i) => (
+                      <HeartIcon
+                        key={i}
+                        filled={i <= staff.lives}
+                        className={
+                          i <= staff.lives
+                            ? staff.lives <= 1
+                              ? "text-red-400"
+                              : staff.lives <= 2
+                              ? "text-yellow-400"
+                              : "text-primary"
+                            : "text-outline/30"
+                        }
+                      />
+                    ))}
+                  </div>
+                  <span className={`text-xl font-bold w-7 text-center ${staff.lives <= 1 ? "text-red-400" : staff.lives <= 2 ? "text-yellow-400" : "text-primary"}`}>
+                    {staff.lives}
+                  </span>
+                </div>
+
+                {/* Status Badge */}
+                <div className={`px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase ${getStatusColor(staff.lives, staff.isHalfDay)}`}>
+                  {staff.isHalfDay ? "HALF DAY" : "FULL DAY"}
+                </div>
+
+                {/* Last Activity — hidden on very small screens */}
+                <div className="hidden sm:block text-right min-w-[90px]">
+                  <p className="text-[10px] text-outline">Last reply:</p>
+                  <p className={`text-xs ${staff.minutesUntilDeduction !== null && staff.minutesUntilDeduction <= 5 ? "text-red-400" : "text-on-surface"}`}>
+                    {formatTimeSince(staff.lastReplyAt)}
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => openAdjustModal(staff, "give")}
+                    disabled={staff.lives >= 4}
+                    className="w-9 h-9 rounded-xl bg-green-500/20 text-green-400 text-sm font-bold hover:bg-green-500/30 transition-colors disabled:opacity-30 flex items-center justify-center"
+                    title="Give Life"
+                  >
+                    +1
+                  </button>
+                  <button
+                    onClick={() => openAdjustModal(staff, "remove")}
+                    disabled={staff.lives <= 0}
+                    className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 text-sm font-bold hover:bg-red-500/30 transition-colors disabled:opacity-30 flex items-center justify-center"
+                    title="Remove Life"
+                  >
+                    -1
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-4">
-          <p className="text-caps-xs text-red-400">{error}</p>
-        </div>
-      )}
-
-      {allStaffLives.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-body-lg text-on-surface-variant">No staff currently checked in</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {allStaffLives.map((staff) => (
-            <div
-              key={staff.userId}
-              className="flex items-center gap-4 p-4 bg-surface-container-high/50 rounded-xl"
-            >
-              {/* Staff Info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-body-md text-on-surface font-medium truncate">{staff.name}</p>
-                <p className="text-caps-xs text-outline truncate">{staff.email}</p>
-              </div>
-
-              {/* Lives Display */}
-              <div className="flex items-center gap-2">
-                <div className="flex gap-0.5">
-                  {[1, 2, 3, 4].map((i) => (
-                    <HeartIcon
-                      key={i}
-                      filled={i <= staff.lives}
-                      className={
-                        i <= staff.lives
-                          ? staff.lives <= 1
-                            ? "text-red-400"
-                            : staff.lives <= 2
-                            ? "text-yellow-400"
-                            : "text-primary"
-                          : "text-outline/30"
-                      }
-                    />
-                  ))}
-                </div>
-                <span className={`text-h3 font-bold w-8 text-center ${staff.lives <= 1 ? "text-red-400" : staff.lives <= 2 ? "text-yellow-400" : "text-primary"}`}>
-                  {staff.lives}
-                </span>
-              </div>
-
-              {/* Status Badge */}
-              <div className={`px-3 py-1 rounded-full border text-caps-xs ${getStatusColor(staff.lives, staff.isHalfDay)}`}>
-                {staff.isHalfDay ? "HALF DAY" : "FULL DAY"}
-              </div>
-
-              {/* Last Activity */}
-              <div className="hidden md:block text-right min-w-[100px]">
-                <p className="text-caps-xs text-outline">Last reply:</p>
-                <p className={`text-caps-xs ${staff.minutesUntilDeduction !== null && staff.minutesUntilDeduction <= 5 ? "text-red-400" : "text-on-surface"}`}>
-                  {formatTimeSince(staff.lastReplyAt)}
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => openAdjustModal(staff, "give")}
-                  disabled={staff.lives >= 4}
-                  className="px-3 py-2 bg-green-500/20 text-green-400 rounded-xl text-caps-xs hover:bg-green-500/30 transition-colors disabled:opacity-30"
-                  title="Give Life"
-                >
-                  +1
-                </button>
-                <button
-                  onClick={() => openAdjustModal(staff, "remove")}
-                  disabled={staff.lives <= 0}
-                  className="px-3 py-2 bg-red-500/20 text-red-400 rounded-xl text-caps-xs hover:bg-red-500/30 transition-colors disabled:opacity-30"
-                  title="Remove Life"
-                >
-                  -1
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Adjustment Modal */}
+      {/* Adjustment Modal — Bottom sheet on mobile */}
       {isModalOpen && selectedStaff && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-card p-6 rounded-2xl max-w-md w-full">
-            <h3 className="text-h3 text-on-surface mb-4">
-              {actionType === "give" ? "Give Lives" : "Remove Lives"}
-            </h3>
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setIsModalOpen(false)}
+          />
 
-            <p className="text-body-md text-on-surface-variant mb-4">
-              Staff: <span className="text-on-surface font-medium">{selectedStaff.name}</span>
-            </p>
-
-            <p className="text-body-md text-on-surface-variant mb-4">
-              Current Lives: <span className="text-h3 font-bold text-primary">{selectedStaff.lives}</span>
-            </p>
-
-            {/* Amount Selection */}
-            <div className="mb-4">
-              <label className="text-caps-xs text-outline block mb-2">Amount:</label>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4].map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => setAmount(num)}
-                    disabled={
-                      actionType === "give"
-                        ? selectedStaff.lives + num > 4
-                        : selectedStaff.lives - num < 0
-                    }
-                    className={`w-12 h-12 rounded-xl text-h3 font-bold transition-colors ${
-                      amount === num
-                        ? actionType === "give"
-                          ? "bg-green-500 text-white"
-                          : "bg-red-500 text-white"
-                        : "bg-surface-container-high text-on-surface hover:bg-white/10"
-                    } disabled:opacity-30`}
-                  >
-                    {num}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Reason Input */}
-            <div className="mb-6">
-              <label className="text-caps-xs text-outline block mb-2">Reason (required):</label>
-              <input
-                type="text"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Enter reason for adjustment..."
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-body-md text-on-surface focus:border-primary-container focus:ring-0 placeholder:text-outline transition-colors outline-none"
-              />
-            </div>
-
-            {/* Messages */}
-            {adjustmentError && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-4">
-                <p className="text-caps-xs text-red-400">{adjustmentError}</p>
-              </div>
-            )}
-            {adjustmentSuccess && (
-              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 mb-4">
-                <p className="text-caps-xs text-green-400">{adjustmentSuccess}</p>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-3">
+          {/* Sheet */}
+          <div className="relative bg-[#1e1b2e] border border-white/10 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/10">
+              <h3 className="text-base font-bold text-on-surface">
+                {actionType === "give" ? "Give Lives" : "Remove Lives"}
+              </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="flex-1 px-4 py-3 bg-surface-container-high rounded-xl text-caps-xs text-on-surface hover:bg-white/10 transition-colors"
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors"
               >
-                Cancel
+                <X className="w-4 h-4 text-on-surface-variant" />
               </button>
-              <button
-                onClick={handleAdjustLives}
-                disabled={!reason.trim()}
-                className={`flex-1 px-4 py-3 rounded-xl text-caps-xs font-medium transition-colors disabled:opacity-50 ${
-                  actionType === "give"
-                    ? "bg-green-500 text-white hover:bg-green-600"
-                    : "bg-red-500 text-white hover:bg-red-600"
-                }`}
-              >
-                {actionType === "give" ? "Give Lives" : "Remove Lives"}
-              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4">
+              {/* Staff Info */}
+              <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+                <p className="text-xs text-outline mb-0.5">Staff Member</p>
+                <p className="text-sm font-semibold text-on-surface">{selectedStaff.name}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4].map((i) => (
+                      <HeartIcon
+                        key={i}
+                        filled={i <= selectedStaff.lives}
+                        className={i <= selectedStaff.lives ? "text-primary" : "text-outline/30"}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-outline">Current: <span className="text-primary font-bold">{selectedStaff.lives}</span></span>
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label className="text-xs font-semibold text-outline uppercase tracking-wide block mb-2">Amount</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[1, 2, 3, 4].map((num) => (
+                    <button
+                      key={num}
+                      onClick={() => setAmount(num)}
+                      disabled={
+                        actionType === "give"
+                          ? selectedStaff.lives + num > 4
+                          : selectedStaff.lives - num < 0
+                      }
+                      className={`h-12 rounded-xl text-lg font-bold transition-colors disabled:opacity-30 ${
+                        amount === num
+                          ? actionType === "give"
+                            ? "bg-green-500 text-white"
+                            : "bg-red-500 text-white"
+                          : "bg-surface-container-high text-on-surface hover:bg-white/10"
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label className="text-xs font-semibold text-outline uppercase tracking-wide block mb-2">
+                  Reason <span className="text-red-400">(required)</span>
+                </label>
+                <input
+                  type="text"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Enter reason for adjustment..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-on-surface focus:border-primary/40 outline-none placeholder:text-outline transition-colors"
+                />
+              </div>
+
+              {/* Messages */}
+              {adjustmentError && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3">
+                  <p className="text-xs text-red-400">{adjustmentError}</p>
+                </div>
+              )}
+              {adjustmentSuccess && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
+                  <p className="text-xs text-green-400">{adjustmentSuccess}</p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pb-2">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-on-surface-variant hover:bg-white/10 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAdjustLives}
+                  disabled={!reason.trim() || submitting}
+                  className={`flex-1 py-3 rounded-xl text-sm font-bold text-white transition-colors disabled:opacity-50 ${
+                    actionType === "give"
+                      ? "bg-green-500 hover:bg-green-600"
+                      : "bg-red-500 hover:bg-red-600"
+                  }`}
+                >
+                  {submitting ? "Saving..." : actionType === "give" ? "Give Lives" : "Remove Lives"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
