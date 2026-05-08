@@ -16,7 +16,8 @@ import {
   ArrowUpDown,
   History,
   LayoutGrid,
-  List
+  List,
+  LogIn
 } from "lucide-react";
 import { format, subDays, addDays } from "date-fns";
 
@@ -44,6 +45,7 @@ interface AttendanceLog {
   attendanceStatus: string;
   checkInTime?: string;
   checkOutTime?: string;
+  isReCheckedIn?: boolean;
 }
 
 export default function AttendancePage() {
@@ -66,6 +68,7 @@ export default function AttendancePage() {
   const [taskSearch, setTaskSearch] = useState("");
   const [taskSortOrder, setTaskSortOrder] = useState<"asc" | "desc">("desc");
   const [taskPage, setTaskPage] = useState(1);
+  const [recheckinLoading, setRecheckinLoading] = useState(false);
   const tasksPerPage = 5;
 
   // Fetch Staff List
@@ -140,6 +143,36 @@ export default function AttendancePage() {
     setSelectedDate(prev => days > 0 ? addDays(prev, days) : subDays(prev, Math.abs(days)));
   };
 
+  const handleRecheckin = async () => {
+    if (!selectedStaff || !logData) return;
+    
+    setRecheckinLoading(true);
+    try {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      const res = await fetch("/api/v1/admin/attendance/recheckin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffId: selectedStaff._id,
+          date: dateStr,
+        }),
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        // Refresh log data
+        fetchAttendanceLog();
+      } else {
+        alert(data.message || "Failed to re-check in");
+      }
+    } catch (error) {
+      console.error("Re-check-in failed:", error);
+      alert("An error occurred during re-check-in");
+    } finally {
+      setRecheckinLoading(false);
+    }
+  };
+
   const livesToHours = (lives: number) => {
     return lives; // 1 life = 1 hour rule
   };
@@ -209,6 +242,36 @@ export default function AttendancePage() {
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Re-Check-In Button */}
+          {logData?.attendanceStatus === "checked-out" && (
+            <button
+              onClick={handleRecheckin}
+              disabled={recheckinLoading || logData.isReCheckedIn}
+              className={`px-6 py-2.5 rounded-2xl font-bold text-sm transition-all duration-300 flex items-center gap-2 shadow-lg ${
+                logData.isReCheckedIn 
+                ? "bg-success/20 text-success border border-success/30 cursor-default" 
+                : "bg-primary text-on-primary hover:scale-105 active:scale-95 shadow-primary/20"
+              }`}
+            >
+              {recheckinLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-on-primary/20 border-t-on-primary rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : logData.isReCheckedIn ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Re-Check-In Done
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4" />
+                  Re-Check-In
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Stats Cards */}

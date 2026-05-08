@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Task from '@/models/Task';
+import Attendance from '@/models/Attendance';
 import { resetActivityTimer } from '@/lib/lives/deductionJob';
 import { z } from 'zod';
 
@@ -45,6 +46,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { taskId } = await params;
 
     await connectDB();
+
+    // Check attendance status for staff
+    if (session.user.role === 'staff') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const attendance = await Attendance.findOne({
+        userId: session.user.id,
+        date: today,
+      });
+
+      if (attendance && attendance.status === 'checked-out') {
+        return NextResponse.json(
+          { success: false, message: 'You have checked out for today. Your work is complete.', error: 'CHECKED_OUT' },
+          { status: 403 }
+        );
+      }
+    }
 
     const task = await Task.findById(taskId)
       .populate('assignedTo', 'name email')
@@ -132,6 +150,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     await connectDB();
+
+    // Check attendance status for staff
+    if (session.user.role === 'staff') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const attendance = await Attendance.findOne({
+        userId: session.user.id,
+        date: today,
+      });
+
+      if (attendance && attendance.status === 'checked-out') {
+        return NextResponse.json(
+          { success: false, message: 'You have checked out for today. Your work is complete.', error: 'CHECKED_OUT' },
+          { status: 403 }
+        );
+      }
+    }
 
     const task = await Task.findById(taskId);
 
@@ -271,6 +306,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     await connectDB();
+
+    // Check attendance status for staff
+    if (session.user.role === 'staff') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const attendance = await Attendance.findOne({
+        userId: session.user.id,
+        date: today,
+      });
+
+      if (attendance && attendance.status === 'checked-out') {
+        return NextResponse.json(
+          { success: false, message: 'You have checked out for today. Your work is complete.', error: 'CHECKED_OUT' },
+          { status: 403 }
+        );
+      }
+    }
 
     const task = await Task.findById(taskId);
 

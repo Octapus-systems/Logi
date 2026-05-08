@@ -30,6 +30,7 @@ export interface IAttendance extends Document {
   breakHistory: IBreakHistory[];
   remainingCountdownSeconds: number;
   currentBreakStart?: Date;
+  isReCheckedIn: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -105,6 +106,10 @@ const AttendanceSchema = new Schema<IAttendance>(
     currentBreakStart: {
       type: Date,
       default: null,
+    },
+    isReCheckedIn: {
+      type: Boolean,
+      default: false,
     },
   },
   {

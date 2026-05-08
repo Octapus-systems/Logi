@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
         attendanceStatus: attendance?.status || 'absent',
         checkInTime: attendance?.checkInTime,
         checkOutTime: attendance?.checkOutTime,
+        isReCheckedIn: attendance?.isReCheckedIn || false,
       },
     });
   } catch (error) {
