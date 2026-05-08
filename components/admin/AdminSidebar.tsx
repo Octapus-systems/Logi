@@ -12,7 +12,7 @@ interface AdminSidebarProps {
 
 const navItems = [
   { name: "Overview", href: "/admin/dashboard", icon: LayoutDashboard },
-  { name: "Staff", href: "/admin/staff", icon: Users },
+  { name: "Attendance", href: "/admin/attendance", icon: Users },
   { name: "Tasks", href: "/admin/tasks", icon: ClipboardList },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
