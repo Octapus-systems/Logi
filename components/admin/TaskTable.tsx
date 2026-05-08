@@ -47,23 +47,17 @@ export function TaskTable({ tasks }: TaskTableProps) {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
-        <h3 className="text-h3 flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary">list_alt</span>
-          Active Task Queue
-        </h3>
-        <div className="flex gap-2">
-          <div className="bg-surface-container-high px-3 sm:px-4 py-2 rounded-lg border border-white/5 flex items-center gap-2 w-full sm:w-auto">
-            <span className="material-symbols-outlined text-[16px] sm:text-[18px] text-on-surface-variant">
-              search
-            </span>
-            <input
-              className="bg-transparent border-none outline-none text-label-sm w-full text-on-surface placeholder:text-on-surface-variant"
-              placeholder="Filter tasks..."
-              type="text"
-            />
-          </div>
+      {/* Filter Bar */}
+      <div className="flex justify-end mb-4 sm:mb-6">
+        <div className="bg-surface-container-high px-3 sm:px-4 py-2 rounded-lg border border-white/5 flex items-center gap-2 w-full sm:w-auto">
+          <span className="material-symbols-outlined text-[16px] sm:text-[18px] text-on-surface-variant">
+            search
+          </span>
+          <input
+            className="bg-transparent border-none outline-none text-label-sm w-full text-on-surface placeholder:text-on-surface-variant"
+            placeholder="Filter tasks..."
+            type="text"
+          />
         </div>
       </div>
 

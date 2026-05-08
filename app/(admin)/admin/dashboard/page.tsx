@@ -6,6 +6,7 @@ import { StaffCard } from "@/components/admin/StaffCard";
 import { ReplyCard } from "@/components/admin/ReplyCard";
 import { TaskTable } from "@/components/admin/TaskTable";
 import { AssignTaskModal } from "@/components/admin/AssignTaskModal";
+import { LivesManager } from "@/components/admin/LivesManager";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAdminData } from "@/hooks/useAdminData";
 
@@ -36,7 +37,7 @@ interface TaskDisplay {
     avatar?: string;
     isUnassigned?: boolean;
   };
-  status: "in-progress" | "reviewing" | "pending" | "done";
+  status: "in-progress" | "reviewing" | "pending" | "done" | "stuck" | "todo";
   timeSpent: string;
   staffReply: string;
 }
@@ -82,13 +83,13 @@ export default function AdminDashboard() {
       name: task.title,
       priority: task.priority,
       assignedTo: {
-        name: task.assignedTo.name,
+        name: task.assignedTo?.name || 'Unassigned',
         avatar: "",
-        isUnassigned: false,
+        isUnassigned: !task.assignedTo,
       },
-      status: task.status as "in-progress" | "reviewing" | "pending" | "done",
-      timeSpent: formatTime(task.timeElapsed),
-      staffReply: task.replies.length > 0 ? task.replies[task.replies.length - 1].content : "",
+      status: task.status as "in-progress" | "reviewing" | "pending" | "done" | "stuck" | "todo",
+      timeSpent: formatTime(task.timeElapsed || 0),
+      staffReply: task.replies && task.replies.length > 0 ? task.replies[task.replies.length - 1].content : "",
     }))
   , [taskData]);
 
@@ -178,6 +179,11 @@ export default function AdminDashboard() {
           icon="sensors"
           variant="primary"
         />
+      </section>
+
+      {/* Lives Management Section */}
+      <section>
+        <LivesManager />
       </section>
 
       {/* Staff & Replies Section */}

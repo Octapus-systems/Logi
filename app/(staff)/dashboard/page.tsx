@@ -5,6 +5,7 @@ import { CheckInButton } from "@/components/staff/CheckInButton";
 import { TaskCard } from "@/components/staff/TaskCard";
 import { PerformanceInsight } from "@/components/staff/PerformanceInsight";
 import { StreakCard } from "@/components/staff/StreakCard";
+import { LivesCounter } from "@/components/staff/LivesCounter";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useTasks } from "@/hooks/useTasks";
@@ -83,6 +84,13 @@ export default function StaffDashboard() {
       {/* Hero Action Section */}
       <section className="flex flex-col items-center text-center space-y-6">
         <CheckInButton onStatusChange={handleCheckInStatusChange} />
+        
+        {/* Lives Counter - Shows when checked in */}
+        {isCheckedIn && (
+          <div className="w-full max-w-xs">
+            <LivesCounter />
+          </div>
+        )}
         
         {/* Task Count - Always visible */}
         <div className="glass-card px-8 py-4 rounded-2xl inline-flex items-center gap-4 border border-white/10">

@@ -6,7 +6,15 @@ import mongoose, { Document, Model, Schema } from 'mongoose';
 export type AttendanceStatus = 'checked-in' | 'checked-out' | 'absent';
 
 /**
- * Simplified attendance interface - only tracks check-in time
+ * Break history entry interface
+ */
+export interface IBreakHistory {
+  breakStartTime: Date;
+  breakEndTime: Date;
+}
+
+/**
+ * Attendance interface with lives tracking
  */
 export interface IAttendance extends Document {
   userId: mongoose.Types.ObjectId;
@@ -14,6 +22,14 @@ export interface IAttendance extends Document {
   checkInTime?: Date;
   checkOutTime?: Date;
   status: AttendanceStatus;
+  lives: number;
+  lastReplyAt?: Date;
+  lastDeductionAt?: Date;
+  isHalfDay: boolean;
+  isOnBreak: boolean;
+  breakHistory: IBreakHistory[];
+  remainingCountdownSeconds: number;
+  currentBreakStart?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +62,49 @@ const AttendanceSchema = new Schema<IAttendance>(
       type: String,
       enum: ['checked-in', 'checked-out', 'absent'],
       default: 'absent',
+    },
+    lives: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 4,
+    },
+    lastReplyAt: {
+      type: Date,
+      default: null,
+    },
+    lastDeductionAt: {
+      type: Date,
+      default: null,
+    },
+    isHalfDay: {
+      type: Boolean,
+      default: false,
+    },
+    isOnBreak: {
+      type: Boolean,
+      default: false,
+    },
+    breakHistory: [
+      {
+        breakStartTime: {
+          type: Date,
+          required: true,
+        },
+        breakEndTime: {
+          type: Date,
+          required: true,
+        },
+      },
+    ],
+    remainingCountdownSeconds: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    currentBreakStart: {
+      type: Date,
+      default: null,
     },
   },
   {

@@ -1,0 +1,161 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import connectDB from '@/lib/db';
+import Attendance from '@/models/Attendance';
+import User from '@/models/User';
+
+/**
+ * Get today's date at midnight for consistent querying
+ */
+function getToday(): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+/**
+ * Calculate minutes until next deduction
+ */
+function calculateMinutesUntilDeduction(lastReplyAt: Date | null, lastDeductionAt: Date | null): number | null {
+  const now = new Date();
+  
+  // Determine the reference time (last reply or last deduction or now)
+  let referenceTime = lastReplyAt;
+  
+  if (lastDeductionAt && (!referenceTime || lastDeductionAt > referenceTime)) {
+    referenceTime = lastDeductionAt;
+  }
+  
+  if (!referenceTime) {
+    return null; // No activity yet, countdown not started
+  }
+  
+  const nextDeductionTime = new Date(referenceTime.getTime() + 30 * 60 * 1000); // 30 minutes later
+  const diffMs = nextDeductionTime.getTime() - now.getTime();
+  const diffMinutes = Math.ceil(diffMs / (60 * 1000));
+  
+  return diffMinutes > 0 ? diffMinutes : 0;
+}
+
+/**
+ * GET /api/v1/lives
+ * Get current lives status
+ * - Staff: Returns own lives status
+ * - Admin: Returns all checked-in staff lives status
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', error: 'UNAUTHORIZED' },
+        { status: 401 }
+      );
+    }
+
+    await connectDB();
+    const today = getToday();
+
+    // Staff view: return own lives status
+    if (session.user.role === 'staff') {
+      const attendance = await Attendance.findOne({
+        userId: session.user.id,
+        date: today,
+      }).lean();
+
+      if (!attendance || attendance.status !== 'checked-in') {
+        return NextResponse.json({
+          success: true,
+          message: 'Not checked in',
+          data: {
+            lives: 0,
+            maxLives: 4,
+            isHalfDay: false,
+            isCheckedIn: false,
+            lastReplyAt: null,
+            nextDeductionAt: null,
+            minutesUntilDeduction: null,
+          },
+        });
+      }
+
+      const minutesUntilDeduction = calculateMinutesUntilDeduction(
+        attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
+        attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null
+      );
+
+      const nextDeductionAt = minutesUntilDeduction !== null
+        ? new Date(Date.now() + minutesUntilDeduction * 60 * 1000).toISOString()
+        : null;
+
+      return NextResponse.json({
+        success: true,
+        message: 'Lives status fetched successfully',
+        data: {
+          lives: attendance.lives,
+          maxLives: 4,
+          isHalfDay: attendance.isHalfDay,
+          isCheckedIn: true,
+          isOnBreak: attendance.isOnBreak,
+          lastReplyAt: attendance.lastReplyAt,
+          lastDeductionAt: attendance.lastDeductionAt,
+          nextDeductionAt,
+          minutesUntilDeduction,
+          remainingCountdownSeconds: attendance.remainingCountdownSeconds,
+        },
+      });
+    }
+
+    // Admin view: return all checked-in staff
+    if (session.user.role === 'admin') {
+      const checkedInStaff = await Attendance.find({
+        date: today,
+        status: 'checked-in',
+      })
+        .populate('userId', 'name email')
+        .sort({ lives: 1, checkInTime: -1 })
+        .lean();
+
+      const formattedStaff = checkedInStaff.map((attendance) => {
+        const user = attendance.userId as unknown as { name: string; email: string; _id: string };
+        const minutesUntilDeduction = calculateMinutesUntilDeduction(
+          attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
+          attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null
+        );
+
+        return {
+          userId: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          lives: attendance.lives,
+          maxLives: 4,
+          isHalfDay: attendance.isHalfDay,
+          isOnBreak: attendance.isOnBreak,
+          lastReplyAt: attendance.lastReplyAt,
+          lastDeductionAt: attendance.lastDeductionAt,
+          checkInTime: attendance.checkInTime,
+          minutesUntilDeduction,
+        };
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Staff lives status fetched successfully',
+        data: formattedStaff,
+      });
+    }
+
+    return NextResponse.json(
+      { success: false, message: 'Invalid role', error: 'FORBIDDEN' },
+      { status: 403 }
+    );
+  } catch (error) {
+    console.error('GET /api/v1/lives error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Failed to fetch lives status', error: 'INTERNAL_ERROR' },
+      { status: 500 }
+    );
+  }
+}

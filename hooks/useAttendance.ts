@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 
 /**
- * Simplified attendance data interface - only tracks check-in time
+ * Simplified attendance data interface - tracks check-in time and break status
  */
 export interface AttendanceData {
   id?: string;
   status: "checked-in" | "checked-out" | "absent";
   checkInTime: Date | null;
+  isOnBreak: boolean;
 }
 
 /**
@@ -112,6 +113,73 @@ export function useAttendance() {
    */
   const isCheckedIn = attendance?.status === "checked-in";
 
+  /**
+   * Check if user is currently on break
+   */
+  const isOnBreak = attendance?.isOnBreak || false;
+
+  /**
+   * Start a break
+   */
+  const startBreak = useCallback(async (remainingSeconds?: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/v1/attendance", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start", remainingSeconds }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || "Failed to start break");
+      }
+
+      setAttendance((prev) => prev ? { ...prev, isOnBreak: true } : null);
+      return data.data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * End a break
+   */
+  const endBreak = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/v1/attendance", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "end" }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || "Failed to end break");
+      }
+
+      setAttendance((prev) => prev ? { ...prev, isOnBreak: false } : null);
+      return data.data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Load attendance on mount
   useEffect(() => {
     fetchAttendance();
@@ -122,8 +190,11 @@ export function useAttendance() {
     loading,
     error,
     isCheckedIn,
+    isOnBreak,
     checkIn,
     checkOut,
+    startBreak,
+    endBreak,
     fetchAttendance,
   };
 }

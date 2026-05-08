@@ -134,20 +134,26 @@ export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, load
         {/* Task Info */}
         <div className="space-y-2 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Status Dropdown */}
+            {/* Status Dropdown - Disabled for Done tasks */}
             <div className="relative">
               <button
-                onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                disabled={loading || !onStatusChange}
-                className={`text-caps-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all hover:opacity-80 disabled:opacity-50 ${statusBadge.className}`}
+                onClick={() => task.status !== "done" && setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                disabled={loading || !onStatusChange || task.status === "done"}
+                className={`text-caps-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all hover:opacity-80 disabled:opacity-50 ${statusBadge.className} ${task.status === "done" ? "cursor-not-allowed" : ""}`}
               >
                 {statusBadge.text}
-                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M7 10l5 5 5-5z" />
-                </svg>
+                {task.status === "done" ? (
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                  </svg>
+                ) : (
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M7 10l5 5 5-5z" />
+                  </svg>
+                )}
               </button>
 
-              {isStatusDropdownOpen && (
+              {isStatusDropdownOpen && task.status !== "done" && (
                 <div className="absolute top-full left-0 mt-1 bg-surface-container-high border border-white/10 rounded-xl shadow-xl z-20 min-w-[140px] overflow-hidden">
                   {STATUS_OPTIONS.map((option) => (
                     <button

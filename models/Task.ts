@@ -24,6 +24,7 @@ export interface ITask extends Document {
   updatedAt: Date;
   startedAt?: Date;
   completedAt?: Date;
+  lockedAt?: Date; // Timestamp when task was marked as Done (locked)
   totalTimeSpent: number; // in seconds
   isTimerRunning: boolean;
   timerStartedAt?: Date;
@@ -97,6 +98,10 @@ const TaskSchema = new Schema<ITask>(
       default: null,
     },
     completedAt: {
+      type: Date,
+      default: null,
+    },
+    lockedAt: {
       type: Date,
       default: null,
     },

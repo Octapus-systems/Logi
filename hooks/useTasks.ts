@@ -25,6 +25,7 @@ export interface Task {
   updatedAt: string;
   startedAt?: string;
   completedAt?: string;
+  lockedAt?: string;
   totalTimeSpent: number;
   isTimerRunning: boolean;
   timeElapsed: number;

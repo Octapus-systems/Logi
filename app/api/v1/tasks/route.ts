@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
       updatedAt: task.updatedAt,
       startedAt: task.startedAt,
       completedAt: task.completedAt,
+      lockedAt: task.lockedAt,
       totalTimeSpent: task.totalTimeSpent,
       isTimerRunning: task.isTimerRunning,
       timeElapsed: task.isTimerRunning && task.timerStartedAt
