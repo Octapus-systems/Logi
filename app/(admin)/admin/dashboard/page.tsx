@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { StatsCard } from "@/components/admin/StatsCard";
-import { StaffCard } from "@/components/admin/StaffCard";
 import { ReplyCard } from "@/components/admin/ReplyCard";
 import { TaskTable } from "@/components/admin/TaskTable";
 import { AssignTaskModal } from "@/components/admin/AssignTaskModal";
 import { LivesManager } from "@/components/admin/LivesManager";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAdminData } from "@/hooks/useAdminData";
-import { Users, ClipboardList, CheckCircle, Radio, BadgeCheck, MessageSquare, List } from "lucide-react";
+import { Users, ClipboardList, CheckCircle, Radio, MessageSquare, List } from "lucide-react";
 
 interface StaffMember {
   id: string;
@@ -46,10 +45,6 @@ interface TaskDisplay {
 export default function AdminDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { staffMembers: staffData, tasks: taskData, replies: replyData, loading, error, refreshData } = useAdminData();
-
-  const handleLifeCountChange = (staffId: string, delta: number) => {
-    console.log(`Change life count for staff ${staffId} by ${delta}`);
-  };
 
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -187,52 +182,25 @@ export default function AdminDashboard() {
         <LivesManager />
       </section>
 
-      {/* Staff & Replies Section */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-10">
-        {/* Active Personnel */}
-        <section className="xl:col-span-2">
-          <h3 className="text-h3 mb-4 sm:mb-6 flex items-center gap-3">
-            <BadgeCheck className="w-6 h-6 text-primary" />
-            Active Personnel
-          </h3>
-          {staffMembers.length === 0 ? (
-            <EmptyState 
-              title="No Staff Members" 
-              description="No staff members found. Make sure you're logged in as an admin and staff members have been created." 
-            />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              {staffMembers.map((staff) => (
-                <StaffCard
-                  key={staff.id}
-                  staff={staff}
-                  onLifeCountChange={(delta) => handleLifeCountChange(staff.id, delta)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Recent Replies */}
-        <section className="xl:col-span-1">
-          <h3 className="text-h3 mb-4 sm:mb-6 flex items-center gap-3">
-            <MessageSquare className="w-6 h-6 text-primary" />
-            Recent Replies
-          </h3>
-          {replyData.length === 0 ? (
-            <EmptyState 
-              title="No Recent Activity" 
-              description="No recent replies found. Staff activity will appear here once they start working on tasks." 
-            />
-          ) : (
-            <div className="flex flex-col gap-3 sm:gap-4">
-              {replyData.map((reply: Reply) => (
-                <ReplyCard key={reply.id} reply={reply} />
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
+      {/* Recent Replies Section */}
+      <section>
+        <h3 className="text-h3 mb-4 sm:mb-6 flex items-center gap-3">
+          <MessageSquare className="w-6 h-6 text-primary" />
+          Recent Activity & Replies
+        </h3>
+        {replyData.length === 0 ? (
+          <EmptyState 
+            title="No Recent Activity" 
+            description="No recent replies found. Staff activity will appear here once they start working on tasks." 
+          />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+            {replyData.map((reply: Reply) => (
+              <ReplyCard key={reply.id} reply={reply} />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Task Queue */}
       <section>
