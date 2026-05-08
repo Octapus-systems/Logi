@@ -6,10 +6,10 @@ import { LayoutDashboard, Users, ClipboardList, Settings, ChevronLeft, ChevronRi
 import { useState, useEffect } from "react";
 
 const menuItems = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/staff", label: "Staff", icon: Users },
-  { href: "/tasks", label: "Tasks", icon: ClipboardList },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/staff/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/staff/staff", label: "Staff", icon: Users, comingSoon: true },
+  { href: "/staff/tasks", label: "Tasks", icon: ClipboardList, comingSoon: true },
+  { href: "/staff/settings", label: "Settings", icon: Settings, comingSoon: true },
 ];
 
 interface SidebarProps {
@@ -99,7 +99,14 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
                 {(isOpen || isMobile) && (
-                  <span className="text-label-sm">{item.label}</span>
+                  <span className="text-label-sm flex items-center gap-2">
+                    {item.label}
+                    {item.comingSoon && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 text-outline-variant">
+                        Coming soon
+                      </span>
+                    )}
+                  </span>
                 )}
               </Link>
             );
@@ -110,21 +117,15 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       {/* Daily Goal Progress */}
       {(isOpen || isMobile) && (
         <div className="mt-auto p-6">
-          <div className="p-4 glass-card rounded-xl border border-primary/20">
-            <p className="text-label-sm text-primary mb-3">Daily Goal: 8h</p>
-            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-primary h-full w-3/4 shadow-[0_0_10px_rgba(206,189,255,0.5)]"></div>
-            </div>
-            <p className="text-caps-xs text-outline-variant mt-2 text-right">75% Complete</p>
+          <div className="p-4 glass-card rounded-xl border border-white/10">
+            <p className="text-label-sm text-on-surface-variant">No data now</p>
           </div>
         </div>
       )}
       {!isOpen && !isMobile && (
         <div className="mt-auto p-4">
-          <div className="p-2 glass-card rounded-xl border border-primary/20 flex justify-center">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-caps-xs text-primary font-bold">75%</span>
-            </div>
+          <div className="p-2 glass-card rounded-xl border border-white/10 flex justify-center">
+            <span className="text-caps-xs text-outline-variant font-bold">N/A</span>
           </div>
         </div>
       )}

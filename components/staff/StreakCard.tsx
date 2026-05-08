@@ -15,7 +15,9 @@ export function StreakCard({ days }: StreakCardProps) {
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
       </svg>
       <p className="text-caps-xs text-primary relative z-10">STREAK</p>
-      <p className="text-h2 text-on-surface relative z-10">{days} Days</p>
+      <p className="text-h2 text-on-surface relative z-10">
+        {days > 0 ? `${days} Days` : "No data now"}
+      </p>
       <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
     </div>
   );

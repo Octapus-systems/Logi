@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CheckInButton } from "@/components/staff/CheckInButton";
 import { TaskCard } from "@/components/staff/TaskCard";
 import { PerformanceInsight } from "@/components/staff/PerformanceInsight";
 import { StreakCard } from "@/components/staff/StreakCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Task {
   id: string;
@@ -17,35 +18,20 @@ interface Task {
 }
 
 export default function StaffDashboard() {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: "1",
-      title: "Update Client Portal",
-      description: "Review and push latest UI changes to the production branch. Ensure the glassmorphism effects are consistent across all viewports.",
-      status: "in-progress",
-      priority: 1,
-      timeElapsed: "00:12:45",
-      isTimerRunning: true,
-    },
-    {
-      id: "2",
-      title: "Review System Documentation",
-      description: "Update the internal developer portal with the new API endpoints for the Lumina Task sync engine.",
-      status: "pending",
-      priority: 2,
-      timeElapsed: "00:00:00",
-      isTimerRunning: false,
-    },
-  ]);
+  // TODO: replace with real API data
+  const [tasks, setTasks] = useState<Task[]>([]);
 
-  const activeTaskCount = tasks.filter(t => t.status === "in-progress" || t.status === "pending").length;
+  const activeTaskCount = useMemo(
+    () => tasks.filter((t) => t.status === "in-progress" || t.status === "pending").length,
+    [tasks]
+  );
 
   const toggleTimer = (taskId: string) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId 
-        ? { ...task, isTimerRunning: !task.isTimerRunning }
-        : task
-    ));
+    setTasks(
+      tasks.map((task) =>
+        task.id === taskId ? { ...task, isTimerRunning: !task.isTimerRunning } : task
+      )
+    );
   };
 
   const currentDate = new Date().toLocaleDateString("en-US", {
@@ -78,22 +64,26 @@ export default function StaffDashboard() {
           </span>
         </div>
 
-        <div className="space-y-4">
-          {tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onToggleTimer={() => toggleTimer(task.id)}
-            />
-          ))}
-        </div>
+        {tasks.length === 0 ? (
+          <EmptyState title="No data now" description="No tasks assigned yet." />
+        ) : (
+          <div className="space-y-4">
+            {tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onToggleTimer={() => toggleTimer(task.id)}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Quick Actions Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
           <div className="md:col-span-2">
             <PerformanceInsight />
           </div>
-          <StreakCard days={12} />
+          <StreakCard days={0} />
         </div>
       </section>
     </div>
