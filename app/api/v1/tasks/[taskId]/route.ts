@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Task from '@/models/Task';
+import { recordTaskReply } from '@/lib/lives/deductionJob';
 import { z } from 'zod';
 
 /**
@@ -11,7 +12,7 @@ import { z } from 'zod';
 const updateTaskSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).optional(),
-  status: z.enum(['pending', 'in-progress', 'completed', 'cancelled']).optional(),
+  status: z.enum(['todo', 'in-progress', 'stuck', 'done']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
 });
 
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         updatedAt: task.updatedAt,
         startedAt: task.startedAt,
         completedAt: task.completedAt,
+        lockedAt: task.lockedAt,
         totalTimeSpent: task.totalTimeSpent,
         isTimerRunning: task.isTimerRunning,
         timeElapsed: task.isTimerRunning && task.timerStartedAt
@@ -161,6 +163,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     if (validationResult.data.status) {
+      // Check if task is already locked (Done) - cannot change from Done
+      if (task.status === 'done' && validationResult.data.status !== 'done') {
+        return NextResponse.json(
+          { success: false, message: 'This task has been completed and cannot be changed.', error: 'TASK_LOCKED' },
+          { status: 403 }
+        );
+      }
+
       updates.status = validationResult.data.status;
       
       // Set startedAt when status changes to in-progress
@@ -168,9 +178,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         updates.startedAt = new Date();
       }
       
-      // Set completedAt when status changes to completed
-      if (validationResult.data.status === 'completed' && !task.completedAt) {
+      // Set completedAt and lockedAt when status changes to done
+      if (validationResult.data.status === 'done' && !task.completedAt) {
         updates.completedAt = new Date();
+        updates.lockedAt = new Date();
       }
     }
 
@@ -283,6 +294,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     });
 
     await task.save();
+
+    // Record the task reply to reset life deduction countdown
+    await recordTaskReply(session.user.id);
 
     const updatedTask = await Task.findById(taskId)
       .populate('assignedTo', 'name email')

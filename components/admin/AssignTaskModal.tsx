@@ -52,10 +52,69 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Assigning task:", formData);
-    onClose();
+
+    // Client-side validation
+    if (!formData.taskName.trim()) {
+      setError("Task name is required");
+      return;
+    }
+    if (!formData.description.trim()) {
+      setError("Task description is required");
+      return;
+    }
+    if (!formData.assignedTo) {
+      setError("Please select a staff member to assign the task to");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const payload = {
+      title: formData.taskName.trim(),
+      description: formData.description.trim(),
+      priority: formData.priority === "critical" ? "urgent" : formData.priority,
+      assignedTo: formData.assignedTo,
+    };
+
+    console.log("[AssignTask] Sending payload:", payload);
+
+    try {
+      const response = await fetch("/api/v1/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      console.log("[AssignTask] Response status:", response.status);
+
+      const result = await response.json();
+      console.log("[AssignTask] Response data:", result);
+
+      if (result.success) {
+        // Reset form and close modal
+        setFormData({
+          taskName: "",
+          description: "",
+          assignedTo: "",
+          priority: "medium",
+        });
+        onClose();
+        // Refresh the page to show new task
+        window.location.reload();
+      } else {
+        setError(result.message || result.error || "Failed to assign task");
+      }
+    } catch (err) {
+      console.error("[AssignTask] Error:", err);
+      setError("Failed to assign task. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -90,6 +149,7 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full bg-surface-container-low border border-white/10 rounded-xl px-4 py-3 text-on-surface outline-none focus:border-primary/50 transition-colors h-24 resize-none"
               placeholder="Enter task description..."
+              required
             />
           </div>
 
@@ -139,19 +199,25 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
             </div>
           </div>
 
+          {error && (
+            <p className="text-error text-label-sm text-center">{error}</p>
+          )}
+
           <div className="flex gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-white/10 text-on-surface-variant hover:bg-white/5 transition-all text-label-sm font-medium"
+              disabled={loading}
+              className="flex-1 py-3 rounded-xl border border-white/10 text-on-surface-variant hover:bg-white/5 transition-all text-label-sm font-medium disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#8c62ff] to-[#693bdb] text-white hover:shadow-lg hover:shadow-[#8c62ff]/20 transition-all text-label-sm font-bold"
+              disabled={loading}
+              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#8c62ff] to-[#693bdb] text-white hover:shadow-lg hover:shadow-[#8c62ff]/20 transition-all text-label-sm font-bold disabled:opacity-50"
             >
-              Assign Task
+              {loading ? "Assigning..." : "Assign Task"}
             </button>
           </div>
         </form>

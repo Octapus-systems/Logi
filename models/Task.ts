@@ -3,7 +3,7 @@ import mongoose, { Document, Model, Schema } from 'mongoose';
 /**
  * Task status enum
  */
-export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled';
+export type TaskStatus = 'todo' | 'in-progress' | 'stuck' | 'done';
 
 /**
  * Task priority enum
@@ -24,6 +24,7 @@ export interface ITask extends Document {
   updatedAt: Date;
   startedAt?: Date;
   completedAt?: Date;
+  lockedAt?: Date; // Timestamp when task was marked as Done (locked)
   totalTimeSpent: number; // in seconds
   isTimerRunning: boolean;
   timerStartedAt?: Date;
@@ -73,8 +74,8 @@ const TaskSchema = new Schema<ITask>(
     },
     status: {
       type: String,
-      enum: ['pending', 'in-progress', 'completed', 'cancelled'],
-      default: 'pending',
+      enum: ['todo', 'in-progress', 'stuck', 'done'],
+      default: 'todo',
     },
     priority: {
       type: String,
@@ -97,6 +98,10 @@ const TaskSchema = new Schema<ITask>(
       default: null,
     },
     completedAt: {
+      type: Date,
+      default: null,
+    },
+    lockedAt: {
       type: Date,
       default: null,
     },

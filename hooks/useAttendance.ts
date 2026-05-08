@@ -3,25 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 
 /**
- * Attendance data interface
+ * Simplified attendance data interface - tracks check-in time and break status
  */
 export interface AttendanceData {
   id?: string;
-  status: "checked-in" | "checked-out" | "absent" | "on-break";
+  status: "checked-in" | "checked-out" | "absent";
   checkInTime: Date | null;
-  checkOutTime: Date | null;
-  totalWorkingHours: number;
-  formattedWorkingHours: string;
-  remainingTime: number;
-  formattedRemainingTime: string;
   isOnBreak: boolean;
-  breaks: Array<{
-    startTime: Date;
-    endTime?: Date;
-    duration: number;
-    reason?: string;
-  }>;
-  notes: string;
 }
 
 /**
@@ -121,9 +109,19 @@ export function useAttendance() {
   }, []);
 
   /**
-   * Toggle break (start or end)
+   * Check if user is currently checked in
    */
-  const toggleBreak = useCallback(async (reason?: string) => {
+  const isCheckedIn = attendance?.status === "checked-in";
+
+  /**
+   * Check if user is currently on break
+   */
+  const isOnBreak = attendance?.isOnBreak || false;
+
+  /**
+   * Start a break
+   */
+  const startBreak = useCallback(async (remainingSeconds?: number) => {
     try {
       setLoading(true);
       setError(null);
@@ -131,17 +129,16 @@ export function useAttendance() {
       const response = await fetch("/api/v1/attendance", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ action: "start", remainingSeconds }),
       });
 
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.message || "Failed to manage break");
+        throw new Error(data.message || "Failed to start break");
       }
 
-      // Refresh attendance data to get full updated state
-      await fetchAttendance();
+      setAttendance((prev) => prev ? { ...prev, isOnBreak: true } : null);
       return data.data;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -150,25 +147,38 @@ export function useAttendance() {
     } finally {
       setLoading(false);
     }
-  }, [fetchAttendance]);
+  }, []);
 
   /**
-   * Check if user is currently checked in
+   * End a break
    */
-  const isCheckedIn = attendance?.status === "checked-in" || attendance?.status === "on-break";
+  const endBreak = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  /**
-   * Get remaining time in seconds
-   */
-  const getRemainingSeconds = useCallback(() => {
-    if (!attendance || attendance.status !== "checked-in") {
-      return 4 * 60 * 60; // 4 hours default
+      const response = await fetch("/api/v1/attendance", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "end" }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || "Failed to end break");
+      }
+
+      setAttendance((prev) => prev ? { ...prev, isOnBreak: false } : null);
+      return data.data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
     }
-
-    const fourHours = 4 * 60 * 60;
-    const worked = attendance.totalWorkingHours;
-    return Math.max(0, fourHours - worked);
-  }, [attendance]);
+  }, []);
 
   // Load attendance on mount
   useEffect(() => {
@@ -180,10 +190,11 @@ export function useAttendance() {
     loading,
     error,
     isCheckedIn,
+    isOnBreak,
     checkIn,
     checkOut,
-    toggleBreak,
+    startBreak,
+    endBreak,
     fetchAttendance,
-    getRemainingSeconds,
   };
 }
