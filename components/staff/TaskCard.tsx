@@ -7,6 +7,7 @@ interface TaskCardProps {
   task: Task;
   onToggleTimer: (taskId: string) => void;
   onAddReply?: (taskId: string, content: string) => void;
+  onStatusChange?: (taskId: string, status: Task["status"]) => void;
   loading?: boolean;
 }
 
@@ -46,31 +47,57 @@ function getStatusBadge(status: Task["status"]): { text: string; className: stri
         text: "In Progress",
         className: "bg-primary/10 text-primary border-l-4 border-l-primary",
       };
-    case "completed":
+    case "stuck":
       return {
-        text: "Completed",
-        className: "bg-green-500/10 text-green-400 border-l-4 border-l-green-500",
-      };
-    case "cancelled":
-      return {
-        text: "Cancelled",
+        text: "Stuck",
         className: "bg-red-500/10 text-red-400 border-l-4 border-l-red-500",
+      };
+    case "done":
+      return {
+        text: "Done",
+        className: "bg-green-500/10 text-green-400 border-l-4 border-l-green-500",
       };
     default:
       return {
-        text: "Pending",
+        text: "To do",
         className: "bg-surface-container-highest text-outline",
       };
   }
 }
 
-export function TaskCard({ task, onToggleTimer, onAddReply, loading = false }: TaskCardProps) {
+/**
+ * Status options for dropdown
+ */
+const STATUS_OPTIONS: { value: Task["status"]; label: string }[] = [
+  { value: "todo", label: "To do" },
+  { value: "in-progress", label: "In progress" },
+  { value: "stuck", label: "Stuck" },
+  { value: "done", label: "Done" },
+];
+
+export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, loading = false }: TaskCardProps) {
   const [statusUpdate, setStatusUpdate] = useState("");
   const [displayTime, setDisplayTime] = useState(task.timeElapsed);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
   const isActive = task.status === "in-progress";
   const statusBadge = getStatusBadge(task.status);
   const priorityColor = getPriorityColor(task.priority);
+
+  /**
+   * Handle status change
+   */
+  const handleStatusChange = async (newStatus: Task["status"]) => {
+    // Stop timer if status changes to 'done' and timer is running
+    if (newStatus === "done" && task.isTimerRunning) {
+      await onToggleTimer(task.id);
+    }
+    
+    if (onStatusChange && newStatus !== task.status) {
+      onStatusChange(task.id, newStatus);
+    }
+    setIsStatusDropdownOpen(false);
+  };
 
   // Update display time when task timeElapsed changes
   useEffect(() => {
@@ -107,9 +134,42 @@ export function TaskCard({ task, onToggleTimer, onAddReply, loading = false }: T
         {/* Task Info */}
         <div className="space-y-2 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-caps-xs px-2 py-1 rounded-full ${statusBadge.className}`}>
-              {statusBadge.text}
-            </span>
+            {/* Status Dropdown - Disabled for Done tasks */}
+            <div className="relative">
+              <button
+                onClick={() => task.status !== "done" && setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                disabled={loading || !onStatusChange || task.status === "done"}
+                className={`text-caps-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all hover:opacity-80 disabled:opacity-50 ${statusBadge.className} ${task.status === "done" ? "cursor-not-allowed" : ""}`}
+              >
+                {statusBadge.text}
+                {task.status === "done" ? (
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                  </svg>
+                ) : (
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M7 10l5 5 5-5z" />
+                  </svg>
+                )}
+              </button>
+
+              {isStatusDropdownOpen && task.status !== "done" && (
+                <div className="absolute top-full left-0 mt-1 bg-surface-container-high border border-white/10 rounded-xl shadow-xl z-20 min-w-[140px] overflow-hidden">
+                  {STATUS_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => handleStatusChange(option.value)}
+                      className={`w-full text-left px-4 py-2 text-caps-xs hover:bg-white/5 transition-colors ${
+                        task.status === option.value ? "text-primary" : "text-on-surface"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <span className={`text-caps-xs ${priorityColor}`}>
               • {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
             </span>
@@ -141,7 +201,7 @@ export function TaskCard({ task, onToggleTimer, onAddReply, loading = false }: T
             </span>
             <button
               onClick={() => onToggleTimer(task.id)}
-              disabled={loading || task.status === "completed" || task.status === "cancelled"}
+              disabled={loading || task.status === "done"}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed ${
                 task.isTimerRunning
                   ? "bg-red-500/20 text-red-400 border border-red-500/50"
@@ -184,8 +244,8 @@ export function TaskCard({ task, onToggleTimer, onAddReply, loading = false }: T
         </div>
       )}
 
-      {/* Status Update Input - Only for active or in-progress tasks */}
-      {(isActive || task.status === "pending") && (
+      {/* Status Update Input - Only for non-done tasks */}
+      {task.status !== "done" && (
         <div className="flex gap-3 mt-4">
           <div className="relative flex-grow">
             <input

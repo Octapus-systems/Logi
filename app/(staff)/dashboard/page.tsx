@@ -5,6 +5,7 @@ import { CheckInButton } from "@/components/staff/CheckInButton";
 import { TaskCard } from "@/components/staff/TaskCard";
 import { PerformanceInsight } from "@/components/staff/PerformanceInsight";
 import { StreakCard } from "@/components/staff/StreakCard";
+import { LivesCounter } from "@/components/staff/LivesCounter";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useTasks } from "@/hooks/useTasks";
@@ -19,6 +20,7 @@ export default function StaffDashboard() {
     fetchTasks,
     startTimer,
     stopTimer,
+    updateTaskStatus,
     addReply,
     formatTimeElapsed,
   } = useTasks();
@@ -56,6 +58,13 @@ export default function StaffDashboard() {
     await addReply(taskId, content);
   }, [addReply]);
 
+  /**
+   * Handle task status change
+   */
+  const handleStatusChange = useCallback(async (taskId: string, status: "todo" | "in-progress" | "stuck" | "done") => {
+    await updateTaskStatus(taskId, status);
+  }, [updateTaskStatus]);
+
   // Load tasks when checked in
   useEffect(() => {
     if (isCheckedIn) {
@@ -76,6 +85,13 @@ export default function StaffDashboard() {
       <section className="flex flex-col items-center text-center space-y-6">
         <CheckInButton onStatusChange={handleCheckInStatusChange} />
         
+        {/* Lives Counter - Shows when checked in */}
+        {isCheckedIn && (
+          <div className="w-full max-w-xs">
+            <LivesCounter />
+          </div>
+        )}
+        
         {/* Task Count - Always visible */}
         <div className="glass-card px-8 py-4 rounded-2xl inline-flex items-center gap-4 border border-white/10">
           <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 24 24">
@@ -93,18 +109,6 @@ export default function StaffDashboard() {
           </p>
         )}
 
-        {/* Working hours info when checked in */}
-        {isCheckInComplete && attendance?.checkInTime && (
-          <div className="glass-card px-6 py-3 rounded-xl border border-white/10">
-            <p className="text-caps-xs text-outline">
-              Working Hours: {" "}
-              <span className="text-primary-container font-mono">
-                {formatTimeElapsed(attendance.totalWorkingHours || 0)}
-              </span>
-              {" "}completed
-            </p>
-          </div>
-        )}
       </section>
 
       {/* Task List Canvas - Only visible after check-in */}
@@ -142,6 +146,7 @@ export default function StaffDashboard() {
                   task={task}
                   onToggleTimer={handleToggleTimer}
                   onAddReply={handleAddReply}
+                  onStatusChange={handleStatusChange}
                   loading={loading}
                 />
               ))}

@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter by status if provided
-    if (status && ['pending', 'in-progress', 'completed', 'cancelled'].includes(status)) {
+    if (status && ['todo', 'in-progress', 'stuck', 'done'].includes(status)) {
       query.status = status;
     }
 
@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
       updatedAt: task.updatedAt,
       startedAt: task.startedAt,
       completedAt: task.completedAt,
+      lockedAt: task.lockedAt,
       totalTimeSpent: task.totalTimeSpent,
       isTimerRunning: task.isTimerRunning,
       timeElapsed: task.isTimerRunning && task.timerStartedAt
@@ -159,7 +160,7 @@ export async function POST(request: NextRequest) {
       priority: validationResult.data.priority,
       assignedTo: validationResult.data.assignedTo,
       assignedBy: session.user.id,
-      status: 'pending',
+      status: 'todo',
       totalTimeSpent: 0,
       isTimerRunning: false,
       replies: [],

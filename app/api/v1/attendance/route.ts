@@ -3,28 +3,20 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Attendance from '@/models/Attendance';
+import Task from '@/models/Task';
+import { initializeLivesOnCheckIn } from '@/lib/lives/deductionJob';
 import { z } from 'zod';
 
 /**
- * Check-in validation schema
+ * Simple check-in validation schema - accepts empty body
  */
-const checkInSchema = z.object({
-  notes: z.string().max(500).optional(),
-});
+const checkInSchema = z.object({}).passthrough();
 
 /**
- * Check-out validation schema
+ * Simple check-out validation schema - accepts empty body
  */
-const checkOutSchema = z.object({
-  notes: z.string().max(500).optional(),
-});
+const checkOutSchema = z.object({}).passthrough();
 
-/**
- * Break start validation schema
- */
-const breakStartSchema = z.object({
-  reason: z.string().max(200).optional(),
-});
 
 /**
  * Get today's date at midnight for consistent date querying
@@ -54,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     const today = getToday();
 
-    // Find or create today's attendance record
+    // Find today's attendance record
     let attendance = await Attendance.findOne({
       userId: session.user.id,
       date: today,
@@ -68,33 +60,9 @@ export async function GET(request: NextRequest) {
         data: {
           status: 'absent',
           checkInTime: null,
-          checkOutTime: null,
-          totalWorkingHours: 0,
-          formattedWorkingHours: '00:00:00',
-          remainingTime: 4 * 60 * 60, // 4 hours in seconds
-          formattedRemainingTime: '04:00:00',
-          isOnBreak: false,
-          breaks: [],
-          notes: '',
         },
       });
     }
-
-    // Calculate current working hours and remaining time
-    const workingHours = attendance.status === 'checked-in' 
-      ? (attendance as unknown as { getCurrentWorkingHours(): number }).getCurrentWorkingHours()
-      : attendance.totalWorkingHours;
-    
-    const fourHoursInSeconds = 4 * 60 * 60;
-    const remainingTime = Math.max(0, fourHoursInSeconds - workingHours);
-
-    // Format times
-    const formatTime = (seconds: number): string => {
-      const hrs = Math.floor(seconds / 3600);
-      const mins = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
 
     return NextResponse.json({
       success: true,
@@ -103,14 +71,7 @@ export async function GET(request: NextRequest) {
         id: attendance._id.toString(),
         status: attendance.status,
         checkInTime: attendance.checkInTime,
-        checkOutTime: attendance.checkOutTime,
-        totalWorkingHours: workingHours,
-        formattedWorkingHours: formatTime(workingHours),
-        remainingTime: remainingTime,
-        formattedRemainingTime: formatTime(remainingTime),
-        isOnBreak: (attendance as unknown as { isOnBreak(): boolean }).isOnBreak(),
-        breaks: attendance.breaks || [],
-        notes: attendance.notes || '',
+        isOnBreak: attendance.isOnBreak,
       },
     });
   } catch (error) {
@@ -155,50 +116,28 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
-    const today = getToday();
+    // Initialize lives on check-in using the dedicated function
+    const initialized = await initializeLivesOnCheckIn(session.user.id);
+    
+    if (!initialized) {
+      return NextResponse.json(
+        { success: false, message: 'Failed to initialize lives', error: 'INITIALIZATION_ERROR' },
+        { status: 500 }
+      );
+    }
 
-    // Check if already checked in
-    const existingAttendance = await Attendance.findOne({
+    // Fetch the updated attendance record
+    const today = getToday();
+    const attendance = await Attendance.findOne({
       userId: session.user.id,
       date: today,
     });
 
-    if (existingAttendance && existingAttendance.status === 'checked-in') {
+    if (!attendance) {
       return NextResponse.json(
-        { success: false, message: 'Already checked in for today', error: 'ALREADY_CHECKED_IN' },
-        { status: 400 }
+        { success: false, message: 'Failed to fetch attendance record', error: 'NOT_FOUND' },
+        { status: 500 }
       );
-    }
-
-    if (existingAttendance && existingAttendance.status === 'checked-out') {
-      return NextResponse.json(
-        { success: false, message: 'Already checked out for today', error: 'ALREADY_CHECKED_OUT' },
-        { status: 400 }
-      );
-    }
-
-    let attendance;
-    const now = new Date();
-
-    if (existingAttendance) {
-      // Update existing record
-      existingAttendance.status = 'checked-in';
-      existingAttendance.checkInTime = now;
-      if (validationResult.data.notes) {
-        existingAttendance.notes = validationResult.data.notes;
-      }
-      attendance = await existingAttendance.save();
-    } else {
-      // Create new attendance record
-      attendance = await Attendance.create({
-        userId: session.user.id,
-        date: today,
-        status: 'checked-in',
-        checkInTime: now,
-        totalWorkingHours: 0,
-        breaks: [],
-        notes: validationResult.data.notes || '',
-      });
     }
 
     return NextResponse.json({
@@ -208,14 +147,9 @@ export async function POST(request: NextRequest) {
         id: attendance._id.toString(),
         status: attendance.status,
         checkInTime: attendance.checkInTime,
-        checkOutTime: attendance.checkOutTime,
-        totalWorkingHours: attendance.totalWorkingHours,
-        formattedWorkingHours: '00:00:00',
-        remainingTime: 4 * 60 * 60,
-        formattedRemainingTime: '04:00:00',
-        isOnBreak: false,
-        breaks: attendance.breaks,
-        notes: attendance.notes,
+        lives: attendance.lives,
+        maxLives: 4,
+        isHalfDay: attendance.isHalfDay,
       },
     }, { status: 201 });
   } catch (error) {
@@ -230,6 +164,9 @@ export async function POST(request: NextRequest) {
 /**
  * PATCH /api/v1/attendance
  * Check out for the day
+ * Rules:
+ * 1. If on break, end the break first automatically
+ * 2. Must have at least one task marked as Done to check out
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -261,70 +198,53 @@ export async function PATCH(request: NextRequest) {
     await connectDB();
 
     const today = getToday();
+    const now = new Date();
 
-    // Find today's attendance record
-    const attendance = await Attendance.findOne({
+    // Find attendance record
+    let attendance = await Attendance.findOne({
       userId: session.user.id,
       date: today,
     });
 
-    if (!attendance) {
-      return NextResponse.json(
-        { success: false, message: 'No check-in record found for today', error: 'NOT_CHECKED_IN' },
-        { status: 400 }
-      );
-    }
-
-    if (attendance.status === 'checked-out') {
-      return NextResponse.json(
-        { success: false, message: 'Already checked out for today', error: 'ALREADY_CHECKED_OUT' },
-        { status: 400 }
-      );
-    }
-
-    if (attendance.status !== 'checked-in') {
+    if (!attendance || attendance.status !== 'checked-in') {
       return NextResponse.json(
         { success: false, message: 'Not checked in', error: 'NOT_CHECKED_IN' },
         { status: 400 }
       );
     }
 
-    const now = new Date();
-
-    // Calculate total working hours
-    let totalSeconds = Math.floor((now.getTime() - attendance.checkInTime!.getTime()) / 1000);
-    
-    // Subtract break durations
-    for (const breakItem of attendance.breaks) {
-      if (breakItem.endTime) {
-        totalSeconds -= breakItem.duration;
-      } else {
-        // End ongoing breaks
-        breakItem.endTime = now;
-        breakItem.duration = Math.floor((now.getTime() - breakItem.startTime.getTime()) / 1000);
-        totalSeconds -= breakItem.duration;
-      }
+    // Rule 1: If on break, end the break first automatically
+    if (attendance.isOnBreak && attendance.currentBreakStart) {
+      attendance.breakHistory.push({
+        breakStartTime: attendance.currentBreakStart as Date,
+        breakEndTime: now,
+      });
+      attendance.isOnBreak = false;
+      attendance.currentBreakStart = undefined;
+      attendance.remainingCountdownSeconds = 0;
     }
 
-    // Update attendance record
+    // Rule 2: Check if staff has at least one task marked as Done
+    const completedTaskCount = await Task.countDocuments({
+      assignedTo: session.user.id,
+      status: 'done',
+    });
+
+    if (completedTaskCount === 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'You cannot check out without completing at least one task. Please mark a task as Done before checking out.', 
+          error: 'NO_COMPLETED_TASKS' 
+        },
+        { status: 403 }
+      );
+    }
+
+    // Update existing record - proceed with checkout
     attendance.status = 'checked-out';
     attendance.checkOutTime = now;
-    attendance.totalWorkingHours = Math.max(0, totalSeconds);
-    if (validationResult.data.notes) {
-      attendance.notes = attendance.notes 
-        ? `${attendance.notes}\n${validationResult.data.notes}` 
-        : validationResult.data.notes;
-    }
-
-    await attendance.save();
-
-    // Format time
-    const formatTime = (seconds: number): string => {
-      const hrs = Math.floor(seconds / 3600);
-      const mins = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
+    attendance = await attendance.save();
 
     return NextResponse.json({
       success: true,
@@ -333,11 +253,7 @@ export async function PATCH(request: NextRequest) {
         id: attendance._id.toString(),
         status: attendance.status,
         checkInTime: attendance.checkInTime,
-        checkOutTime: attendance.checkOutTime,
-        totalWorkingHours: attendance.totalWorkingHours,
-        formattedWorkingHours: formatTime(attendance.totalWorkingHours),
-        breaks: attendance.breaks,
-        notes: attendance.notes,
+        isOnBreak: false,
       },
     });
   } catch (error) {
@@ -348,6 +264,14 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+
+/**
+ * Break action validation schema
+ */
+const breakActionSchema = z.object({
+  action: z.enum(['start', 'end']),
+  remainingSeconds: z.number().min(0).optional(), // Required when ending break
+});
 
 /**
  * PUT /api/v1/attendance
@@ -367,7 +291,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     
     // Validate request body
-    const validationResult = breakStartSchema.safeParse(body);
+    const validationResult = breakActionSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
         { 
@@ -383,8 +307,9 @@ export async function PUT(request: NextRequest) {
     await connectDB();
 
     const today = getToday();
+    const now = new Date();
 
-    // Find today's attendance record
+    // Find attendance record
     const attendance = await Attendance.findOne({
       userId: session.user.id,
       date: today,
@@ -392,60 +317,78 @@ export async function PUT(request: NextRequest) {
 
     if (!attendance || attendance.status !== 'checked-in') {
       return NextResponse.json(
-        { success: false, message: 'Must be checked in to take a break', error: 'NOT_CHECKED_IN' },
+        { success: false, message: 'Not checked in', error: 'NOT_CHECKED_IN' },
         { status: 400 }
       );
     }
 
-    const now = new Date();
-    
-    // Check if currently on break
-    const ongoingBreakIndex = attendance.breaks.findIndex(b => !b.endTime);
+    const { action, remainingSeconds } = validationResult.data;
 
-    if (ongoingBreakIndex >= 0) {
-      // End current break
-      const breakItem = attendance.breaks[ongoingBreakIndex];
-      breakItem.endTime = now;
-      breakItem.duration = Math.floor((now.getTime() - breakItem.startTime.getTime()) / 1000);
-      attendance.status = 'checked-in';
-      
+    if (action === 'start') {
+      // Start break
+      if (attendance.isOnBreak) {
+        return NextResponse.json(
+          { success: false, message: 'Already on break', error: 'ALREADY_ON_BREAK' },
+          { status: 400 }
+        );
+      }
+
+      attendance.isOnBreak = true;
+      attendance.currentBreakStart = now;
+      // Store remaining seconds for countdown resumption
+      if (remainingSeconds !== undefined) {
+        attendance.remainingCountdownSeconds = remainingSeconds;
+      }
+
       await attendance.save();
 
       return NextResponse.json({
         success: true,
-        message: 'Break ended successfully',
+        message: 'Break started',
         data: {
-          id: attendance._id.toString(),
-          status: attendance.status,
-          breaks: attendance.breaks,
+          isOnBreak: true,
+          breakStartTime: now.toISOString(),
         },
       });
     } else {
-      // Start new break
-      attendance.breaks.push({
-        startTime: now,
-        duration: 0,
-        reason: validationResult.data.reason || '',
-      });
-      attendance.status = 'on-break';
-      
+      // End break
+      if (!attendance.isOnBreak) {
+        return NextResponse.json(
+          { success: false, message: 'Not on break', error: 'NOT_ON_BREAK' },
+          { status: 400 }
+        );
+      }
+
+      // Add to break history
+      if (attendance.currentBreakStart) {
+        attendance.breakHistory.push({
+          breakStartTime: attendance.currentBreakStart as Date,
+          breakEndTime: now,
+        });
+      }
+
+      attendance.isOnBreak = false;
+      attendance.currentBreakStart = undefined;
+      attendance.remainingCountdownSeconds = 0;
+
       await attendance.save();
 
       return NextResponse.json({
         success: true,
-        message: 'Break started successfully',
+        message: 'Break ended',
         data: {
-          id: attendance._id.toString(),
-          status: attendance.status,
-          breaks: attendance.breaks,
+          isOnBreak: false,
+          breakEndTime: now.toISOString(),
+          remainingCountdownSeconds: remainingSeconds || 0,
         },
       });
     }
   } catch (error) {
     console.error('PUT /api/v1/attendance error:', error);
     return NextResponse.json(
-      { success: false, message: 'Failed to manage break', error: 'INTERNAL_ERROR' },
+      { success: false, message: 'Failed to process break action', error: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }
 }
+
