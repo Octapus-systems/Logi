@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
       priority: validationResult.data.priority,
       assignedTo: validationResult.data.assignedTo,
       assignedBy: session.user.id,
-      status: 'pending',
+      status: 'todo',
       totalTimeSpent: 0,
       isTimerRunning: false,
       replies: [],

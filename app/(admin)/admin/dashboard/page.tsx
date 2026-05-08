@@ -57,17 +57,23 @@ export default function AdminDashboard() {
   };
 
   // Transform staff data to match StaffMember interface
-  const staffMembers: StaffMember[] = useMemo(() => 
-    staffData.map(staff => ({
-      id: staff.id,
-      name: staff.name,
-      tasksAssigned: taskData.filter(task => task.assignedTo._id === staff.id).length,
-      lifeCount: staff.lives,
-      maxLives: staff.lives > 0 ? staff.lives * 2 : 10, // Dynamic max based on current lives
-      avatar: "", // Could add avatar field later
-      isOnline: false, // Default to offline until we implement real online tracking
-    }))
-  , [staffData, taskData]);
+  const staffMembers: StaffMember[] = useMemo(() => {
+    return staffData.map((staff: any) => {
+      const tasksAssigned = taskData.filter(task => task.assignedTo._id === staff.id).length;
+      const lifeCount = staff.lives || 0;
+      const maxLives = lifeCount > 0 ? lifeCount * 2 : 10;
+      
+      return {
+        id: staff.id,
+        name: staff.name || 'Unknown Staff',
+        tasksAssigned,
+        lifeCount,
+        maxLives,
+        avatar: '', // API doesn't provide avatar yet
+        isOnline: false, // API doesn't provide online status yet
+      };
+    });
+  }, [staffData, taskData]);
 
   // Transform task data to match TaskDisplay interface  
   const tasks: TaskDisplay[] = useMemo(() =>
@@ -125,9 +131,9 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-6 sm:space-y-8 lg:space-y-16">
       {/* Header */}
-      <header className="flex justify-between items-end">
+      <header className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div>
           <h1 className="text-h1 text-on-background mb-2">Dashboard</h1>
           <p className="text-on-surface-variant text-body-md">
@@ -139,14 +145,14 @@ export default function AdminDashboard() {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-gradient-to-r from-[#8c62ff] to-[#693bdb] text-white px-6 py-3 rounded-full font-label-sm font-bold shadow-lg hover:shadow-xl hover:shadow-[#8c62ff]/20 active:scale-95 transition-all"
+          className="bg-gradient-to-r from-[#8c62ff] to-[#693bdb] text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-label-sm font-bold shadow-lg hover:shadow-xl hover:shadow-[#8c62ff]/20 active:scale-95 transition-all w-full sm:w-auto"
         >
           Assign Task
         </button>
       </header>
 
       {/* Stats Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <StatsCard
           title="Total Staff"
           value={stats.totalStaff}
@@ -175,17 +181,20 @@ export default function AdminDashboard() {
       </section>
 
       {/* Staff & Replies Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-10">
         {/* Active Personnel */}
-        <section className="lg:col-span-2">
-          <h3 className="text-h3 mb-6 flex items-center gap-3">
+        <section className="xl:col-span-2">
+          <h3 className="text-h3 mb-4 sm:mb-6 flex items-center gap-3">
             <span className="material-symbols-outlined text-primary">badge</span>
             Active Personnel
           </h3>
           {staffMembers.length === 0 ? (
-            <EmptyState title="No data now" description="No staff data available." />
+            <EmptyState 
+              title="No Staff Members" 
+              description="No staff members found. Make sure you're logged in as an admin and staff members have been created." 
+            />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {staffMembers.map((staff) => (
                 <StaffCard
                   key={staff.id}
@@ -198,15 +207,18 @@ export default function AdminDashboard() {
         </section>
 
         {/* Recent Replies */}
-        <section className="lg:col-span-1">
-          <h3 className="text-h3 mb-6 flex items-center gap-3">
+        <section className="xl:col-span-1">
+          <h3 className="text-h3 mb-4 sm:mb-6 flex items-center gap-3">
             <span className="material-symbols-outlined text-primary">forum</span>
             Recent Replies
           </h3>
           {replyData.length === 0 ? (
-            <EmptyState title="No data now" description="No replies available." />
+            <EmptyState 
+              title="No Recent Activity" 
+              description="No recent replies found. Staff activity will appear here once they start working on tasks." 
+            />
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:gap-4">
               {replyData.map((reply: Reply) => (
                 <ReplyCard key={reply.id} reply={reply} />
               ))}
@@ -217,8 +229,15 @@ export default function AdminDashboard() {
 
       {/* Task Queue */}
       <section>
+        <h3 className="text-h3 mb-4 sm:mb-6 flex items-center gap-3">
+          <span className="material-symbols-outlined text-primary">list_alt</span>
+          Active Task Queue
+        </h3>
         {tasks.length === 0 ? (
-          <EmptyState title="No data now" description="No tasks available." />
+          <EmptyState 
+            title="No Tasks Found" 
+            description="No tasks have been assigned yet. Create your first task to get started." 
+          />
         ) : (
           <TaskTable tasks={tasks} />
         )}
