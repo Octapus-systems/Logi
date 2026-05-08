@@ -1,4 +1,17 @@
-import { Search, User, UserPlus, Clock } from "lucide-react";
+import { useState, useMemo } from "react";
+import { 
+  Search, 
+  User, 
+  UserPlus, 
+  Clock, 
+  Filter, 
+  ChevronDown, 
+  ChevronUp, 
+  ChevronLeft, 
+  ChevronRight, 
+  SlidersHorizontal,
+  ArrowUpDown
+} from "lucide-react";
 
 interface Task {
   id: string;
@@ -19,6 +32,70 @@ interface TaskTableProps {
 }
 
 export function TaskTable({ tasks }: TaskTableProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Task | 'assignedTo.name'; direction: 'asc' | 'desc' } | null>({ key: 'name', direction: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  // Filter tasks
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      const matchesSearch = 
+        task.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        task.assignedTo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.staffReply.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesStatus = statusFilter === "all" || task.status === statusFilter;
+      const matchesPriority = priorityFilter === "all" || task.priority.toLowerCase() === priorityFilter.toLowerCase();
+      
+      return matchesSearch && matchesStatus && matchesPriority;
+    });
+  }, [tasks, searchQuery, statusFilter, priorityFilter]);
+
+  // Sort tasks
+  const sortedTasks = useMemo(() => {
+    if (!sortConfig) return filteredTasks;
+
+    return [...filteredTasks].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      if (sortConfig.key === 'assignedTo.name') {
+        aValue = a.assignedTo.name;
+        bValue = b.assignedTo.name;
+      } else {
+        aValue = (a as any)[sortConfig.key];
+        bValue = (b as any)[sortConfig.key];
+      }
+
+      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredTasks, sortConfig]);
+
+  // Pagination
+  const totalPages = Math.ceil(sortedTasks.length / itemsPerPage);
+  const paginatedTasks = sortedTasks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const requestSort = (key: any) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key: any) => {
+    if (!sortConfig || sortConfig.key !== key) return <ArrowUpDown className="w-3 h-3 opacity-20" />;
+    return sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 text-primary" /> : <ChevronDown className="w-3 h-3 text-primary" />;
+  };
+
   const getStatusBadge = (status: Task["status"]) => {
     const styles = {
       "in-progress": "bg-tertiary/10 text-tertiary",
@@ -50,31 +127,94 @@ export function TaskTable({ tasks }: TaskTableProps) {
   return (
     <div>
       {/* Filter Bar */}
-      <div className="flex justify-end mb-4 sm:mb-6">
-        <div className="bg-surface-container-high px-3 sm:px-4 py-2 rounded-lg border border-white/5 flex items-center gap-2 w-full sm:w-auto">
+      <div className="flex flex-col sm:flex-row gap-4 mb-6 items-center justify-between">
+        <div className="bg-surface-container-high px-4 py-2.5 rounded-2xl border border-white/5 flex items-center gap-3 w-full sm:max-w-xs focus-within:border-primary/40 transition-colors">
           <Search className="w-4 h-4 text-on-surface-variant" />
           <input
-            className="bg-transparent border-none outline-none text-label-sm w-full text-on-surface placeholder:text-on-surface-variant"
-            placeholder="Filter tasks..."
+            className="bg-transparent border-none outline-none text-sm w-full text-on-surface placeholder:text-on-surface-variant"
+            placeholder="Search tasks or staff..."
             type="text"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
           />
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 bg-surface-container-high px-3 py-2 rounded-xl border border-white/5">
+            <Filter className="w-3.5 h-3.5 text-outline" />
+            <select 
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              className="bg-transparent border-none outline-none text-xs text-on-surface font-medium cursor-pointer"
+            >
+              <option value="all">All Status</option>
+              <option value="in-progress">In Progress</option>
+              <option value="reviewing">Reviewing</option>
+              <option value="pending">Pending</option>
+              <option value="done">Completed</option>
+              <option value="stuck">Stuck</option>
+              <option value="todo">To Do</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 bg-surface-container-high px-3 py-2 rounded-xl border border-white/5">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-outline" />
+            <select 
+              value={priorityFilter}
+              onChange={(e) => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
+              className="bg-transparent border-none outline-none text-xs text-on-surface font-medium cursor-pointer"
+            >
+              <option value="all">All Priority</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Table - Desktop */}
-      <div className="hidden lg:block glass-card rounded-3xl overflow-hidden">
+      <div className="hidden lg:block glass-card rounded-3xl overflow-hidden border border-white/5">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-white/5 border-b border-white/10">
-              <th className="px-6 py-4 text-caps-xs uppercase text-on-surface-variant">Task Name</th>
-              <th className="px-6 py-4 text-caps-xs uppercase text-on-surface-variant">Assigned To</th>
-              <th className="px-6 py-4 text-caps-xs uppercase text-on-surface-variant">Status</th>
-              <th className="px-6 py-4 text-caps-xs uppercase text-on-surface-variant">Time Spent</th>
+              <th 
+                className="px-6 py-4 text-caps-xs uppercase text-on-surface-variant cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => requestSort('name')}
+              >
+                <div className="flex items-center gap-2">
+                  Task Name {getSortIcon('name')}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-caps-xs uppercase text-on-surface-variant cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => requestSort('assignedTo.name')}
+              >
+                <div className="flex items-center gap-2">
+                  Assigned To {getSortIcon('assignedTo.name')}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-caps-xs uppercase text-on-surface-variant cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => requestSort('status')}
+              >
+                <div className="flex items-center gap-2">
+                  Status {getSortIcon('status')}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-caps-xs uppercase text-on-surface-variant cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => requestSort('timeSpent')}
+              >
+                <div className="flex items-center gap-2">
+                  Time Spent {getSortIcon('timeSpent')}
+                </div>
+              </th>
               <th className="px-6 py-4 text-caps-xs uppercase text-on-surface-variant">Staff Reply</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {tasks.map((task) => (
+            {paginatedTasks.map((task) => (
               <tr key={task.id} className="hover:bg-white/[0.02] transition-colors">
                 <td className="px-6 py-4">
                   <p className="text-label-sm font-bold text-on-surface truncate max-w-[200px]">{task.name}</p>
@@ -116,14 +256,21 @@ export function TaskTable({ tasks }: TaskTableProps) {
                 </td>
               </tr>
             ))}
+            {paginatedTasks.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-6 py-12 text-center text-on-surface-variant text-sm">
+                  No tasks found matching your filters.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Mobile Card View */}
       <div className="lg:hidden space-y-3">
-        {tasks.map((task) => (
-          <div key={task.id} className="glass-card p-4 rounded-2xl">
+        {paginatedTasks.map((task) => (
+          <div key={task.id} className="glass-card p-4 rounded-2xl border border-white/5">
             {/* Task Header */}
             <div className="flex justify-between items-start mb-3">
               <div className="flex-1 mr-3">
@@ -176,7 +323,52 @@ export function TaskTable({ tasks }: TaskTableProps) {
             </div>
           </div>
         ))}
+        {paginatedTasks.length === 0 && (
+          <div className="glass-card p-12 text-center text-on-surface-variant text-sm rounded-2xl">
+            No tasks found matching your filters.
+          </div>
+        )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
+          <p className="text-[10px] sm:text-xs text-on-surface-variant">
+            Showing <span className="text-on-surface font-bold">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-on-surface font-bold">{Math.min(currentPage * itemsPerPage, filteredTasks.length)}</span> of <span className="text-on-surface font-bold">{filteredTasks.length}</span> tasks
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="p-2 rounded-lg bg-surface-container-high text-on-surface hover:bg-white/10 disabled:opacity-30 transition-colors border border-white/5"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all border border-white/5 ${
+                    currentPage === page 
+                      ? "bg-primary text-white shadow-lg shadow-primary/20 border-primary" 
+                      : "bg-surface-container-high text-on-surface hover:bg-white/10"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-lg bg-surface-container-high text-on-surface hover:bg-white/10 disabled:opacity-30 transition-colors border border-white/5"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
