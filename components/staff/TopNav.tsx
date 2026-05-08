@@ -1,7 +1,7 @@
 "use client";
 
-import { Menu } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { Menu, LogOut } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
 
 interface TopNavProps {
   onMenuToggle: () => void;
@@ -23,9 +23,9 @@ export function TopNav({ onMenuToggle }: TopNavProps) {
         <Menu className="w-5 h-5" />
       </button>
 
-      <div className="flex items-center gap-6 ml-auto">
+      <div className="flex items-center gap-4 ml-auto">
         {/* User Profile */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
             <p className="text-label-sm font-bold text-on-surface">{name}</p>
             <p className="text-caps-xs text-outline">Staff</p>
@@ -40,6 +40,19 @@ export function TopNav({ onMenuToggle }: TopNavProps) {
             )}
           </div>
         </div>
+
+        {/* Divider */}
+        <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
+
+        {/* Logout Button */}
+        <button
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-all duration-200"
+          title="Log Out"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="hidden sm:inline">Logout</span>
+        </button>
       </div>
     </nav>
   );
