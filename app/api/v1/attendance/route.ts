@@ -224,23 +224,6 @@ export async function PATCH(request: NextRequest) {
       attendance.remainingCountdownSeconds = 0;
     }
 
-    // Rule 2: Check if staff has at least one task marked as Done
-    const completedTaskCount = await Task.countDocuments({
-      assignedTo: session.user.id,
-      status: 'done',
-    });
-
-    if (completedTaskCount === 0) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'You cannot check out without completing at least one task. Please mark a task as Done before checking out.', 
-          error: 'NO_COMPLETED_TASKS' 
-        },
-        { status: 403 }
-      );
-    }
-
     // Update existing record - proceed with checkout
     attendance.status = 'checked-out';
     attendance.checkOutTime = now;
@@ -325,6 +308,25 @@ export async function PUT(request: NextRequest) {
     const { action, remainingSeconds } = validationResult.data;
 
     if (action === 'start') {
+      // Rule: Check if staff has at least one task marked as Done today
+      const today = getToday();
+      const completedTaskCount = await Task.countDocuments({
+        assignedTo: session.user.id,
+        status: 'done',
+        completedAt: { $gte: today },
+      });
+
+      if (completedTaskCount === 0) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'You must complete at least 1 task before taking a break.', 
+            error: 'NO_COMPLETED_TASKS' 
+          },
+          { status: 403 }
+        );
+      }
+
       // Start break
       if (attendance.isOnBreak) {
         return NextResponse.json(

@@ -17,6 +17,7 @@ export default function StaffDashboard() {
     loading,
     error,
     activeTaskCount,
+    doneTaskCount,
     fetchTasks,
     startTimer,
     stopTimer,
@@ -87,7 +88,10 @@ export default function StaffDashboard() {
     <div className="max-w-6xl mx-auto space-y-16">
       {/* Hero Action Section */}
       <section className="flex flex-col items-center text-center space-y-6">
-        <CheckInButton onStatusChange={handleCheckInStatusChange} />
+        <CheckInButton 
+          onStatusChange={handleCheckInStatusChange} 
+          doneTaskCount={doneTaskCount}
+        />
         
         {/* Lives Counter - Shows when checked in */}
         {isCheckedIn && (
