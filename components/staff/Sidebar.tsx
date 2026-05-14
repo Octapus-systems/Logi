@@ -18,7 +18,7 @@ import { useState, useEffect } from "react";
 const menuItems = [
   { href: "/staff/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/staff/staff", label: "Staff", icon: Users, comingSoon: true },
-  { href: "/staff/tasks", label: "Tasks", icon: ClipboardList, comingSoon: true },
+  { href: "/staff/tasks", label: "Tasks", icon: ClipboardList },
   { href: "/staff/settings", label: "Settings", icon: Settings },
 ];
 
