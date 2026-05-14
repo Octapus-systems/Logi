@@ -19,19 +19,19 @@ async function seedUsers() {
 
     const usersToCreate = [
       {
-        email: 'Fathima@octapus.com',
-        password: 'Fath@123',
-        name: 'Fathima',
+        email: 'shifanaav9@gmail.com',
+        password: 'Shifana@8888',
+        name: 'Shifana',
         role: 'staff',
-        lives: 0,
+        lives: 3,
         isActive: true,
       },
       {
-        email: 'Admin@octapus.com',
-        password: 'Admin@666',
-        name: 'Admin',
-        role: 'admin',
-        lives: 0,
+        email: 'fathimashafeeq47@gmail.com',
+        password: 'Fathima@8888',
+        name: 'Fathima Shafeeq',
+        role: 'staff',
+        lives: 3,
         isActive: true,
       },
       {
