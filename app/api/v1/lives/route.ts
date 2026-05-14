@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Attendance from '@/models/Attendance';
 import User from '@/models/User';
+import { processLifeDeductions } from '@/lib/lives/deductionJob';
 
 /**
  * Get today's date at midnight for consistent querying
@@ -69,6 +70,11 @@ export async function GET(request: NextRequest) {
     }
 
     await connectDB();
+    
+    // Process deductions automatically before reading status to ensure no delay
+    // This is especially useful in local dev or if cron job misses a beat
+    await processLifeDeductions();
+
     const today = getToday();
 
     // Staff view: return own lives status
