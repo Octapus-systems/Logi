@@ -53,13 +53,14 @@ export function useTasks() {
   /**
    * Fetch tasks from API
    */
-  const fetchTasks = useCallback(async (page = 1, limit = 10, status?: string) => {
+  const fetchTasks = useCallback(async (page = 1, limit = 10, status?: string, all?: boolean) => {
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (status) params.append("status", status);
+      if (all) params.append("all", "true");
 
       const response = await fetch(`/api/v1/tasks?${params.toString()}`);
       const data = await response.json();
@@ -276,6 +277,37 @@ export function useTasks() {
   ).length;
 
   /**
+   * Move task to today
+   */
+  const moveToToday = useCallback(async (taskId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`/api/v1/tasks/${taskId}/move-to-today`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || "Failed to move task");
+      }
+
+      // Refresh tasks after moving
+      fetchTasks(pagination.page, pagination.limit, undefined, true);
+      
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchTasks, pagination]);
+
+  /**
    * Get done task count for TODAY
    * Since the API now filters by today's date (IST) by default, 
    * we can simply count all tasks with 'done' status.
@@ -295,5 +327,6 @@ export function useTasks() {
     updateTaskStatus,
     addReply,
     formatTimeElapsed,
+    moveToToday,
   };
 }

@@ -64,6 +64,11 @@ export function LivesCounter() {
     setCountdown(minutesUntilDeduction);
   }, [minutesUntilDeduction]);
 
+  // Fetch lives status on mount
+  useEffect(() => {
+    fetchLivesStatus();
+  }, [fetchLivesStatus]);
+
   // Decrement countdown locally every second for smoother UI
   // Pause when on break
   useEffect(() => {
@@ -74,17 +79,19 @@ export function LivesCounter() {
     const interval = setInterval(() => {
       setCountdown((prev) => {
         if (prev === null || prev <= 0) return prev;
-        return prev - 1 / 60; // Decrement by 1 second
+        const next = prev - 1 / 60; // Decrement by 1 second
+        
+        // Trigger immediate refresh when hitting 0 to avoid "DEDUCTING..." hang
+        if (next <= 0) {
+          fetchLivesStatus();
+        }
+        
+        return next;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [livesStatus?.isCheckedIn, countdown, isOnBreak]);
-
-  // Fetch lives status on mount
-  useEffect(() => {
-    fetchLivesStatus();
-  }, [fetchLivesStatus]);
+  }, [livesStatus?.isCheckedIn, countdown, isOnBreak, fetchLivesStatus]);
 
   // Not checked in state
   if (!livesStatus?.isCheckedIn) {
