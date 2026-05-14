@@ -34,6 +34,14 @@ async function seedUsers() {
         lives: 0,
         isActive: true,
       },
+      {
+        email: 'octapos.systems@gmail.com',
+        password: 'Admin@123',
+        name: 'Admin Systems',
+        role: 'admin',
+        lives: 0,
+        isActive: true,
+      },
     ];
 
     for (const userData of usersToCreate) {
