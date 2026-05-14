@@ -245,7 +245,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // Send email if status changed to done
     if (validationResult.data.status === 'done' && task.status !== 'done') {
-      sendTaskDoneEmail(
+      await sendTaskDoneEmail(
         session.user.name || session.user.email || 'Staff Member',
         taskObj.title,
         new Date()
