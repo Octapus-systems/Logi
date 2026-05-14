@@ -78,7 +78,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Staff can only view their own tasks
-    if (session.user.role === 'staff' && task.assignedTo._id.toString() !== session.user.id) {
+    const assignedToId = (task.assignedTo as any)._id?.toString() || task.assignedTo.toString();
+    if (session.user.role === 'staff' && assignedToId !== session.user.id) {
       return NextResponse.json(
         { success: false, message: 'Access denied', error: 'FORBIDDEN' },
         { status: 403 }

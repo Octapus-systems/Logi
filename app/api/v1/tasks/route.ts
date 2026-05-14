@@ -225,10 +225,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Send email notification asynchronously
-    if (taskObj.assignedTo && taskObj.assignedTo.email) {
+    const assignedTo = taskObj.assignedTo as any;
+    if (assignedTo && assignedTo.email) {
       sendTaskAssignedEmail(
-        taskObj.assignedTo.email,
-        taskObj.assignedTo.name || 'Staff Member',
+        assignedTo.email,
+        assignedTo.name || 'Staff Member',
         taskObj.title,
         activeTaskCount
       ).catch(err => console.error('Failed to send task assignment email:', err));
