@@ -1,15 +1,30 @@
 import nodemailer from 'nodemailer';
 
 // Create transporter lazily to ensure env vars are loaded
-const getTransporter = () => nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const getTransporter = () => {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT || '587');
+
+  if (!user || !pass) {
+    console.error('SMTP_USER or SMTP_PASS environment variables are missing!');
+  }
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465, // true for 465, false for other ports
+    auth: {
+      user,
+      pass,
+    },
+    // Add some timeout settings for serverless environments
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+  });
+};
 
 export async function sendTaskAssignedEmail(
   staffEmail: string,
@@ -36,11 +51,18 @@ export async function sendTaskAssignedEmail(
     };
 
     const transporter = getTransporter();
+    
+    // Optional: Verify connection configuration
+    // await transporter.verify(); 
+
     const info = await transporter.sendMail(mailOptions);
     console.log('Task assigned email sent: %s', info.messageId);
     return true;
-  } catch (error) {
-    console.error('Error sending task assigned email:', error);
+  } catch (error: any) {
+    console.error('Error sending task assigned email:', error.message || error);
+    if (error.code === 'EAUTH') {
+      console.error('SMTP Authentication failed. Check SMTP_USER and SMTP_PASS (App Password if using Gmail).');
+    }
     return false;
   }
 }
@@ -71,8 +93,8 @@ export async function sendCheckInEmail(staffName: string, time: Date) {
     const info = await transporter.sendMail(mailOptions);
     console.log('Check-in email sent: %s', info.messageId);
     return true;
-  } catch (error) {
-    console.error('Error sending check-in email:', error);
+  } catch (error: any) {
+    console.error('Error sending check-in email:', error.message || error);
     return false;
   }
 }
@@ -103,8 +125,8 @@ export async function sendCheckOutEmail(staffName: string, time: Date) {
     const info = await transporter.sendMail(mailOptions);
     console.log('Check-out email sent: %s', info.messageId);
     return true;
-  } catch (error) {
-    console.error('Error sending check-out email:', error);
+  } catch (error: any) {
+    console.error('Error sending check-out email:', error.message || error);
     return false;
   }
 }
@@ -141,8 +163,8 @@ export async function sendTaskDoneEmail(
     const info = await transporter.sendMail(mailOptions);
     console.log('Task completed email sent: %s', info.messageId);
     return true;
-  } catch (error) {
-    console.error('Error sending task completed email:', error);
+  } catch (error: any) {
+    console.error('Error sending task completed email:', error.message || error);
     return false;
   }
 }

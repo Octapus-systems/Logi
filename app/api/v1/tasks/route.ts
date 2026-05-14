@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
     // Send email notification asynchronously
     const assignedTo = taskObj.assignedTo as any;
     if (assignedTo && assignedTo.email) {
-      sendTaskAssignedEmail(
+      await sendTaskAssignedEmail(
         assignedTo.email,
         assignedTo.name || 'Staff Member',
         taskObj.title,

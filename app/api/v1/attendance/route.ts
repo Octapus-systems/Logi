@@ -158,8 +158,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send check-in email asynchronously
-    sendCheckInEmail(
+    // Send check-in email
+    await sendCheckInEmail(
       session.user.name || session.user.email || 'Staff Member',
       new Date()
     ).catch(err => console.error('Failed to send check-in email:', err));
@@ -262,8 +262,8 @@ export async function PATCH(request: NextRequest) {
     attendance.checkOutTime = now;
     attendance = await attendance.save();
 
-    // Send check-out email asynchronously
-    sendCheckOutEmail(
+    // Send check-out email
+    await sendCheckOutEmail(
       session.user.name || session.user.email || 'Staff Member',
       now
     ).catch(err => console.error('Failed to send check-out email:', err));
