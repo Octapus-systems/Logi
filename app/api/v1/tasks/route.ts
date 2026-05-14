@@ -5,6 +5,8 @@ import connectDB from '@/lib/db';
 import Task from '@/models/Task';
 import Attendance from '@/models/Attendance';
 import { z } from 'zod';
+import { getISTTodayRange } from '@/lib/dateUtils';
+
 
 /**
  * Task creation validation schema
@@ -65,6 +67,14 @@ export async function GET(request: NextRequest) {
 
     // Build query based on user role
     let query: Record<string, unknown> = {};
+    
+    // Default filter for today's tasks (IST)
+    // Admin can bypass this by passing all=true
+    const showAll = searchParams.get('all') === 'true';
+    if (!showAll) {
+      const { start, end } = getISTTodayRange();
+      query.createdAt = { $gte: start, $lte: end };
+    }
     
     if (session.user.role === 'staff') {
       query.assignedTo = session.user.id;

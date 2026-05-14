@@ -277,17 +277,10 @@ export function useTasks() {
 
   /**
    * Get done task count for TODAY
+   * Since the API now filters by today's date (IST) by default, 
+   * we can simply count all tasks with 'done' status.
    */
-  const doneTaskCount = tasks.filter((t) => {
-    if (t.status !== "done" || !t.completedAt) return false;
-    const completedDate = new Date(t.completedAt);
-    const today = new Date();
-    return (
-      completedDate.getDate() === today.getDate() &&
-      completedDate.getMonth() === today.getMonth() &&
-      completedDate.getFullYear() === today.getFullYear()
-    );
-  }).length;
+  const doneTaskCount = tasks.filter((t) => t.status === "done").length;
 
   return {
     tasks,
