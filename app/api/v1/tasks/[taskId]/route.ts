@@ -5,6 +5,7 @@ import connectDB from '@/lib/db';
 import Task from '@/models/Task';
 import Attendance from '@/models/Attendance';
 import { resetActivityTimer } from '@/lib/lives/deductionJob';
+import { sendTaskDoneEmail } from '@/lib/email';
 import { z } from 'zod';
 
 /**
@@ -240,6 +241,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // Convert to plain object for response
     const taskObj = updatedTask.toObject();
+
+    // Send email if status changed to done
+    if (validationResult.data.status === 'done' && task.status !== 'done') {
+      sendTaskDoneEmail(
+        session.user.name || session.user.email || 'Staff Member',
+        taskObj.title,
+        new Date()
+      ).catch(err => console.error('Failed to send task done email:', err));
+    }
 
     return NextResponse.json({
       success: true,

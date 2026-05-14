@@ -6,6 +6,7 @@ import Task from '@/models/Task';
 import Attendance from '@/models/Attendance';
 import { z } from 'zod';
 import { getISTTodayRange } from '@/lib/dateUtils';
+import { sendTaskAssignedEmail } from '@/lib/email';
 
 
 /**
@@ -216,6 +217,22 @@ export async function POST(request: NextRequest) {
 
     // Convert to plain object for response
     const taskObj = populatedTask.toObject();
+
+    // Count active tasks for this user
+    const activeTaskCount = await Task.countDocuments({
+      assignedTo: validationResult.data.assignedTo,
+      status: { $in: ['todo', 'in-progress', 'stuck'] }
+    });
+
+    // Send email notification asynchronously
+    if (taskObj.assignedTo && taskObj.assignedTo.email) {
+      sendTaskAssignedEmail(
+        taskObj.assignedTo.email,
+        taskObj.assignedTo.name || 'Staff Member',
+        taskObj.title,
+        activeTaskCount
+      ).catch(err => console.error('Failed to send task assignment email:', err));
+    }
 
     return NextResponse.json({
       success: true,

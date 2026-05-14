@@ -5,6 +5,7 @@ import connectDB from '@/lib/db';
 import Attendance from '@/models/Attendance';
 import Task from '@/models/Task';
 import { initializeLivesOnCheckIn } from '@/lib/lives/deductionJob';
+import { sendCheckInEmail, sendCheckOutEmail } from '@/lib/email';
 import { z } from 'zod';
 
 /**
@@ -157,6 +158,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Send check-in email asynchronously
+    sendCheckInEmail(
+      session.user.name || session.user.email || 'Staff Member',
+      new Date()
+    ).catch(err => console.error('Failed to send check-in email:', err));
+
     return NextResponse.json({
       success: true,
       message: 'Checked in successfully',
@@ -254,6 +261,12 @@ export async function PATCH(request: NextRequest) {
     attendance.status = 'checked-out';
     attendance.checkOutTime = now;
     attendance = await attendance.save();
+
+    // Send check-out email asynchronously
+    sendCheckOutEmail(
+      session.user.name || session.user.email || 'Staff Member',
+      now
+    ).catch(err => console.error('Failed to send check-out email:', err));
 
     return NextResponse.json({
       success: true,
