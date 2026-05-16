@@ -35,9 +35,21 @@ export function TaskTable({ tasks }: TaskTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [staffFilter, setStaffFilter] = useState<string>("all");
   const [sortConfig, setSortConfig] = useState<{ key: keyof Task | 'assignedTo.name'; direction: 'asc' | 'desc' } | null>({ key: 'name', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Get unique staff members from tasks
+  const uniqueStaff = useMemo(() => {
+    const staffNames = new Set<string>();
+    tasks.forEach(t => {
+      if (!t.assignedTo.isUnassigned && t.assignedTo.name) {
+        staffNames.add(t.assignedTo.name);
+      }
+    });
+    return Array.from(staffNames).sort();
+  }, [tasks]);
 
   // Filter tasks
   const filteredTasks = useMemo(() => {
@@ -49,10 +61,11 @@ export function TaskTable({ tasks }: TaskTableProps) {
       
       const matchesStatus = statusFilter === "all" || task.status === statusFilter;
       const matchesPriority = priorityFilter === "all" || task.priority.toLowerCase() === priorityFilter.toLowerCase();
+      const matchesStaff = staffFilter === "all" || task.assignedTo.name === staffFilter;
       
-      return matchesSearch && matchesStatus && matchesPriority;
+      return matchesSearch && matchesStatus && matchesPriority && matchesStaff;
     });
-  }, [tasks, searchQuery, statusFilter, priorityFilter]);
+  }, [tasks, searchQuery, statusFilter, priorityFilter, staffFilter]);
 
   // Sort tasks
   const sortedTasks = useMemo(() => {
@@ -140,6 +153,21 @@ export function TaskTable({ tasks }: TaskTableProps) {
         </div>
         
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Staff Filter */}
+          <div className="flex items-center gap-2 bg-surface-container-high px-3 py-2 rounded-xl border border-white/5">
+            <User className="w-3.5 h-3.5 text-outline" />
+            <select 
+              value={staffFilter}
+              onChange={(e) => { setStaffFilter(e.target.value); setCurrentPage(1); }}
+              className="bg-transparent border-none outline-none text-xs text-on-surface font-medium cursor-pointer"
+            >
+              <option value="all">All Staff</option>
+              {uniqueStaff.map(staffName => (
+                <option key={staffName} value={staffName}>{staffName}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex items-center gap-2 bg-surface-container-high px-3 py-2 rounded-xl border border-white/5">
             <Filter className="w-3.5 h-3.5 text-outline" />
             <select 
@@ -149,8 +177,6 @@ export function TaskTable({ tasks }: TaskTableProps) {
             >
               <option value="all">All Status</option>
               <option value="in-progress">In Progress</option>
-              <option value="reviewing">Reviewing</option>
-              <option value="pending">Pending</option>
               <option value="done">Completed</option>
               <option value="stuck">Stuck</option>
               <option value="todo">To Do</option>
@@ -331,11 +357,31 @@ export function TaskTable({ tasks }: TaskTableProps) {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
+      <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
+        <div className="flex items-center gap-4">
           <p className="text-[10px] sm:text-xs text-on-surface-variant">
-            Showing <span className="text-on-surface font-bold">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-on-surface font-bold">{Math.min(currentPage * itemsPerPage, filteredTasks.length)}</span> of <span className="text-on-surface font-bold">{filteredTasks.length}</span> tasks
+            Showing <span className="text-on-surface font-bold">{filteredTasks.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> to <span className="text-on-surface font-bold">{Math.min(currentPage * itemsPerPage, filteredTasks.length)}</span> of <span className="text-on-surface font-bold">{filteredTasks.length}</span> tasks
           </p>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] sm:text-xs text-on-surface-variant">Per page:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="bg-surface-container-high text-xs text-on-surface border border-white/5 rounded-lg px-2 py-1 outline-none"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+        </div>
+        
+        {totalPages > 1 && (
           <div className="flex items-center gap-1">
             <button
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
@@ -367,8 +413,8 @@ export function TaskTable({ tasks }: TaskTableProps) {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
