@@ -6,9 +6,6 @@ import Attendance from '@/models/Attendance';
 import LifeHistory from '@/models/LifeHistory';
 import { z } from 'zod';
 
-/**
- * Admin life adjustment validation schema
- */
 const adjustLivesSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
   action: z.enum(['give', 'remove']),
@@ -16,19 +13,12 @@ const adjustLivesSchema = z.object({
   reason: z.string().min(1).max(500),
 });
 
-/**
- * Get today's date at midnight for consistent querying
- */
 function getToday(): Date {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
   return today;
 }
 
-/**
- * POST /api/v1/lives/admin
- * Admin-only endpoint to give or remove lives from a staff member
- */
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

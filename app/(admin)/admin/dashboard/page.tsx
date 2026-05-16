@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { StatsCard } from "@/components/admin/StatsCard";
 import { ReplyCard } from "@/components/admin/ReplyCard";
 import { TaskTable } from "@/components/admin/TaskTable";
-import { AssignTaskModal } from "@/components/admin/AssignTaskModal";
 import { LivesManager } from "@/components/admin/LivesManager";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAdminData } from "@/hooks/useAdminData";
 import { Users, ClipboardList, CheckCircle, Radio, MessageSquare, List } from "lucide-react";
+import Link from "next/link";
 
 interface StaffMember {
   id: string;
@@ -43,7 +43,6 @@ interface TaskDisplay {
 }
 
 export default function AdminDashboard() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const { staffMembers: staffData, tasks: taskData, replies: replyData, loading, error, refreshData } = useAdminData();
 
   const formatTime = (seconds: number): string => {
@@ -56,18 +55,21 @@ export default function AdminDashboard() {
   // Transform staff data to match StaffMember interface
   const staffMembers: StaffMember[] = useMemo(() => {
     return staffData.map((staff: any) => {
-      const tasksAssigned = taskData.filter(task => task.assignedTo._id === staff.id).length;
+      // Find tasks assigned to this staff member
+      const staffTasks = taskData.filter(task => task.assignedTo?._id === staff.id || task.assignedTo?._id === staff._id);
+      const tasksAssigned = staffTasks.length;
+      
       const lifeCount = staff.lives || 0;
-      const maxLives = lifeCount > 0 ? lifeCount * 2 : 10;
+      const maxLives = 4; // Standard max lives
       
       return {
-        id: staff.id,
+        id: staff.id || staff._id,
         name: staff.name || 'Unknown Staff',
         tasksAssigned,
         lifeCount,
         maxLives,
-        avatar: '', // API doesn't provide avatar yet
-        isOnline: false, // API doesn't provide online status yet
+        avatar: '', 
+        isOnline: staff.isCheckedIn || false,
       };
     });
   }, [staffData, taskData]);
@@ -94,9 +96,9 @@ export default function AdminDashboard() {
       totalStaff: staffMembers.length,
       totalTasks: tasks.length,
       completed: tasks.filter(task => task.status === 'done').length,
-      activeSessions: tasks.filter(task => task.status === 'in-progress').length,
+      activeSessions: staffMembers.filter(staff => staff.isOnline).length,
     }),
-    [staffMembers.length, tasks.length]
+    [staffMembers, tasks.length]
   );
 
   if (loading) {
@@ -140,12 +142,12 @@ export default function AdminDashboard() {
             }
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-gradient-to-r from-[#8c62ff] to-[#693bdb] text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-label-sm font-bold shadow-lg hover:shadow-xl hover:shadow-[#8c62ff]/20 active:scale-95 transition-all w-full sm:w-auto"
+        <Link
+          href="/admin/tasks/assign"
+          className="bg-gradient-to-r from-[#8c62ff] to-[#693bdb] text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-label-sm font-bold shadow-lg hover:shadow-xl hover:shadow-[#8c62ff]/20 active:scale-95 transition-all w-full sm:w-auto text-center"
         >
           Assign Task
-        </button>
+        </Link>
       </header>
 
       {/* Stats Grid */}
@@ -218,8 +220,6 @@ export default function AdminDashboard() {
         )}
       </section>
 
-      {/* Assign Task Modal */}
-      <AssignTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }

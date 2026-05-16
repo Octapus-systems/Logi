@@ -51,9 +51,9 @@ export default function LoginPage() {
       }
 
       if (result?.ok) {
-        // Fetch session to get user role
-        const response = await fetch("/api/auth/session");
-        const session = await response.json();
+        // Use getSession to get user role
+        const { getSession } = await import("next-auth/react");
+        const session = await getSession();
 
         // Redirect based on role
         if (session?.user?.role === "admin") {

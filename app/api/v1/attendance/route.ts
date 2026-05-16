@@ -8,30 +8,16 @@ import { initializeLivesOnCheckIn } from '@/lib/lives/deductionJob';
 import { sendCheckInEmail, sendCheckOutEmail } from '@/lib/email';
 import { z } from 'zod';
 
-/**
- * Simple check-in validation schema - accepts empty body
- */
 const checkInSchema = z.object({}).passthrough();
-
-/**
- * Simple check-out validation schema - accepts empty body
- */
 const checkOutSchema = z.object({}).passthrough();
 
 
-/**
- * Get today's date at midnight for consistent date querying
- */
 function getToday(): Date {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
   return today;
 }
 
-/**
- * GET /api/v1/attendance
- * Get today's attendance status for the authenticated user
- */
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -85,10 +71,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * POST /api/v1/attendance
- * Check in for the day
- */
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -185,13 +167,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * PATCH /api/v1/attendance
- * Check out for the day
- * Rules:
- * 1. If on break, end the break first automatically
- * 2. Must have at least one task marked as Done to check out
- */
 export async function PATCH(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -287,18 +262,11 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-/**
- * Break action validation schema
- */
 const breakActionSchema = z.object({
   action: z.enum(['start', 'end']),
   remainingSeconds: z.number().min(0).optional(), // Required when ending break
 });
 
-/**
- * PUT /api/v1/attendance
- * Start or end a break
- */
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

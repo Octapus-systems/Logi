@@ -6,10 +6,7 @@ import Attendance from "@/models/Attendance";
 import Task from "@/models/Task";
 import User from "@/models/User";
 
-/**
- * GET /api/v1/admin/attendance/log
- * Fetch attendance log for a specific staff member and date
- */
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -34,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     const date = new Date(dateStr);
-    date.setHours(0, 0, 0, 0);
+    date.setUTCHours(0, 0, 0, 0);
 
     const nextDate = new Date(date);
     nextDate.setDate(nextDate.getDate() + 1);
