@@ -15,10 +15,15 @@ interface AssignTaskModalProps {
 }
 
 export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    taskName: string;
+    description: string;
+    assignedTo: string[];
+    priority: string;
+  }>({
     taskName: "",
     description: "",
-    assignedTo: "",
+    assignedTo: [],
     priority: "medium",
   });
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -61,7 +66,7 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
 
     if (!formData.taskName.trim()) { setError("Task name is required"); return; }
     if (!formData.description.trim()) { setError("Task description is required"); return; }
-    if (!formData.assignedTo) { setError("Please select a staff member"); return; }
+    if (formData.assignedTo.length === 0) { setError("Please select at least one staff member"); return; }
 
     setLoading(true);
     setError(null);
@@ -70,22 +75,26 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
       title: formData.taskName.trim(),
       description: formData.description.trim(),
       priority: formData.priority === "critical" ? "urgent" : formData.priority,
-      assignedTo: formData.assignedTo,
     };
 
     try {
-      const response = await fetch("/api/v1/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const result = await response.json();
-      if (result.success) {
-        setFormData({ taskName: "", description: "", assignedTo: "", priority: "medium" });
+      const promises = formData.assignedTo.map(assignedId => 
+        fetch("/api/v1/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, assignedTo: assignedId }),
+        }).then(res => res.json())
+      );
+
+      const results = await Promise.all(promises);
+      const failed = results.filter(r => !r.success);
+
+      if (failed.length > 0) {
+        setError(`Failed to assign task to ${failed.length} staff member(s).`);
+      } else {
+        setFormData({ taskName: "", description: "", assignedTo: [], priority: "medium" });
         onClose();
         window.location.reload();
-      } else {
-        setError(result.message || result.error || "Failed to assign task");
       }
     } catch {
       setError("Failed to assign task. Please check your connection and try again.");
@@ -149,19 +158,35 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
               <label className="block text-xs font-semibold text-on-surface-variant mb-2 uppercase tracking-wide">
                 Assign To
               </label>
-              <select
-                value={formData.assignedTo}
-                onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-on-surface outline-none focus:border-primary/50 transition-colors cursor-pointer"
-                disabled={loading}
-              >
-                <option value="">{loading ? "Loading staff..." : "Select staff member..."}</option>
-                {staffMembers.map((staff) => (
-                  <option key={staff._id} value={staff._id} className="bg-[#1e1b2e]">
-                    {staff.name} — {staff.email}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 max-h-48 overflow-y-auto space-y-3">
+                {loading && staffMembers.length === 0 ? (
+                  <div className="text-sm text-on-surface-variant">Loading staff...</div>
+                ) : (
+                  staffMembers.map((staff) => (
+                    <label key={staff._id} className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.assignedTo.includes(staff._id)}
+                          onChange={(e) => {
+                            const newAssignedTo = e.target.checked
+                              ? [...formData.assignedTo, staff._id]
+                              : formData.assignedTo.filter(id => id !== staff._id);
+                            setFormData({ ...formData, assignedTo: newAssignedTo });
+                          }}
+                          className="peer w-5 h-5 appearance-none rounded border border-white/20 bg-white/5 checked:bg-primary checked:border-primary transition-all cursor-pointer"
+                        />
+                        <svg className="absolute w-3 h-3 pointer-events-none opacity-0 peer-checked:opacity-100 text-white transition-opacity" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                      <span className="text-sm text-on-surface group-hover:text-white transition-colors">
+                        {staff.name} <span className="text-on-surface-variant text-xs">— {staff.email}</span>
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
             </div>
 
             <div>
