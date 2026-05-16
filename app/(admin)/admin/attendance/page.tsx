@@ -29,11 +29,17 @@ interface StaffMember {
   status?: string;
 }
 
+interface TaskReply {
+  content: string;
+  createdAt: string;
+}
+
 interface TaskLog {
   id: string;
   title: string;
   completedAt: string;
   totalTimeSpent: number;
+  replies?: TaskReply[];
 }
 
 interface AttendanceLog {
@@ -69,6 +75,7 @@ export default function AttendancePage() {
   const [taskSortOrder, setTaskSortOrder] = useState<"asc" | "desc">("desc");
   const [taskPage, setTaskPage] = useState(1);
   const [recheckinLoading, setRecheckinLoading] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TaskLog | null>(null);
   const tasksPerPage = 5;
 
   // Fetch Staff List
@@ -352,7 +359,11 @@ export default function AttendancePage() {
             ) : paginatedTasks.length > 0 ? (
               <div className="divide-y divide-white/5">
                 {paginatedTasks.map((task) => (
-                  <div key={task.id} className="p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
+                  <button 
+                    key={task.id} 
+                    onClick={() => setSelectedTask(task)}
+                    className="w-full text-left p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors group"
+                  >
                     <div className="flex items-start gap-4">
                       <div className="mt-1 w-8 h-8 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0">
                         <CheckCircle2 className="w-4 h-4 text-green-500" />
@@ -368,13 +379,19 @@ export default function AttendancePage() {
                             <Clock className="w-3 h-3" />
                             Time taken: {formatSeconds(task.totalTimeSpent)}
                           </p>
+                          {task.replies && task.replies.length > 0 && (
+                            <p className="text-xs text-blue-400 font-medium flex items-center gap-1.5">
+                              <LayoutGrid className="w-3 h-3" />
+                              {task.replies.length} Report(s)
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
                     <div className="text-[10px] font-bold text-outline-variant bg-white/5 px-2.5 py-1 rounded-full uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
                       Completed
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             ) : (
@@ -418,6 +435,59 @@ export default function AttendancePage() {
             </div>
           )}
         </div>
+
+        {/* Task Detail Modal */}
+        {selectedTask && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-[#1e1b2e] border border-white/10 rounded-3xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+              <div className="p-6 border-b border-white/10 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold text-on-surface">{selectedTask.title}</h3>
+                  <div className="flex items-center gap-4 mt-2">
+                    <p className="text-sm text-on-surface-variant flex items-center gap-1.5">
+                      <Clock className="w-4 h-4" />
+                      Marked as done at {format(new Date(selectedTask.completedAt), "hh:mm a")}
+                    </p>
+                    <p className="text-sm text-primary flex items-center gap-1.5">
+                      <Clock className="w-4 h-4" />
+                      Total time: {formatSeconds(selectedTask.totalTimeSpent)}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className="p-2 hover:bg-white/10 rounded-xl transition-colors text-on-surface-variant hover:text-on-surface"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto">
+                <h4 className="text-sm font-bold text-on-surface mb-4 flex items-center gap-2">
+                  <LayoutGrid className="w-4 h-4 text-primary" />
+                  Staff Reports
+                </h4>
+                {selectedTask.replies && selectedTask.replies.length > 0 ? (
+                  <div className="space-y-4">
+                    {selectedTask.replies.map((reply, index) => (
+                      <div key={index} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-primary uppercase tracking-wider">Report {index + 1}</span>
+                          <span className="text-xs text-on-surface-variant">{format(new Date(reply.createdAt), "MMM dd, yyyy hh:mm a")}</span>
+                        </div>
+                        <p className="text-sm text-on-surface whitespace-pre-wrap">{reply.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-10 bg-white/5 rounded-2xl border border-white/5 border-dashed">
+                    <LayoutGrid className="w-8 h-8 text-on-surface-variant opacity-20 mb-3" />
+                    <p className="text-sm text-on-surface-variant">No reports submitted for this task.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
