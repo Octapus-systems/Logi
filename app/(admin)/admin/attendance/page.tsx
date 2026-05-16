@@ -42,12 +42,22 @@ interface TaskLog {
   replies?: TaskReply[];
 }
 
+interface PendingTaskLog {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+  priority: string;
+  totalTimeSpent: number;
+}
+
 interface AttendanceLog {
   staffName: string;
   date: string;
   lives: number;
   totalTasksCleared: number;
   tasks: TaskLog[];
+  pendingTasks?: PendingTaskLog[];
   attendanceStatus: string;
   checkInTime?: string;
   checkOutTime?: string;
@@ -77,6 +87,12 @@ export default function AttendancePage() {
   const [recheckinLoading, setRecheckinLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskLog | null>(null);
   const tasksPerPage = 5;
+
+  const [pendingSearch, setPendingSearch] = useState("");
+  const [pendingPage, setPendingPage] = useState(1);
+  const [pendingSortOrder, setPendingSortOrder] = useState<"asc" | "desc">("desc");
+
+  const [taskTab, setTaskTab] = useState<"completed" | "uncompleted">("completed");
 
   // Fetch Staff List
   useEffect(() => {
@@ -207,6 +223,21 @@ export default function AttendancePage() {
 
   const totalTaskPages = Math.ceil(filteredTasks.length / tasksPerPage);
 
+  const filteredPendingTasks = logData?.pendingTasks?.filter(t => 
+    t.title.toLowerCase().includes(pendingSearch.toLowerCase())
+  ).sort((a, b) => {
+    const timeA = new Date(a.createdAt).getTime();
+    const timeB = new Date(b.createdAt).getTime();
+    return pendingSortOrder === "asc" ? timeA - timeB : timeB - timeA;
+  }) || [];
+
+  const paginatedPendingTasks = filteredPendingTasks.slice(
+    (pendingPage - 1) * tasksPerPage,
+    pendingPage * tasksPerPage
+  );
+
+  const totalPendingPages = Math.ceil(filteredPendingTasks.length / tasksPerPage);
+
   if (view === "detail" && selectedStaff) {
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -321,118 +352,247 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        {/* Task List Section */}
+        {/* Tasks Section with Tabs */}
         <div className="bg-[#161421] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
           <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-lg font-bold text-on-surface flex items-center gap-2">
-              <List className="w-5 h-5 text-primary" />
-              Cleared Tasks
-            </h2>
-            
-            <div className="flex items-center gap-2">
-              <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant group-focus-within:text-primary transition-colors" />
-                <input
-                  type="text"
-                  placeholder="Filter tasks..."
-                  value={taskSearch}
-                  onChange={(e) => {setTaskSearch(e.target.value); setTaskPage(1);}}
-                  className="bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all w-full sm:w-64"
-                />
-              </div>
-              <button 
-                onClick={() => setTaskSortOrder(prev => prev === "asc" ? "desc" : "asc")}
-                className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors group"
-                title="Sort by Time"
+            <div className="flex items-center gap-4 bg-white/5 p-1 rounded-2xl w-full sm:w-auto">
+              <button
+                onClick={() => setTaskTab("completed")}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  taskTab === "completed" 
+                  ? "bg-[#161421] text-primary shadow-lg" 
+                  : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+                }`}
               >
-                <ArrowUpDown className={`w-4 h-4 text-on-surface-variant group-hover:text-primary transition-colors ${taskSortOrder === "asc" ? "rotate-180" : ""}`} />
+                <List className={`w-4 h-4 ${taskTab === "completed" ? "text-primary" : ""}`} />
+                Completed Tasks
+                {paginatedTasks.length > 0 && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] ${taskTab === "completed" ? "bg-primary/20 text-primary" : "bg-white/10 text-on-surface-variant"}`}>
+                    {filteredTasks.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setTaskTab("uncompleted")}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  taskTab === "uncompleted" 
+                  ? "bg-[#161421] text-yellow-500 shadow-lg" 
+                  : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+                }`}
+              >
+                <Clock className={`w-4 h-4 ${taskTab === "uncompleted" ? "text-yellow-500" : ""}`} />
+                Uncompleted Tasks
+                {paginatedPendingTasks.length > 0 && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] ${taskTab === "uncompleted" ? "bg-yellow-500/20 text-yellow-500" : "bg-white/10 text-on-surface-variant"}`}>
+                    {filteredPendingTasks.length}
+                  </span>
+                )}
               </button>
             </div>
+            
+            {taskTab === "completed" ? (
+              <div className="flex items-center gap-2">
+                <div className="relative group">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant group-focus-within:text-primary transition-colors" />
+                  <input
+                    type="text"
+                    placeholder="Filter completed tasks..."
+                    value={taskSearch}
+                    onChange={(e) => {setTaskSearch(e.target.value); setTaskPage(1);}}
+                    className="bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all w-full sm:w-64"
+                  />
+                </div>
+                <button 
+                  onClick={() => setTaskSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+                  className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors group"
+                  title="Sort by Time"
+                >
+                  <ArrowUpDown className={`w-4 h-4 text-on-surface-variant group-hover:text-primary transition-colors ${taskSortOrder === "asc" ? "rotate-180" : ""}`} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="relative group">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant group-focus-within:text-yellow-500 transition-colors" />
+                  <input
+                    type="text"
+                    placeholder="Filter pending tasks..."
+                    value={pendingSearch}
+                    onChange={(e) => {setPendingSearch(e.target.value); setPendingPage(1);}}
+                    className="bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all w-full sm:w-64"
+                  />
+                </div>
+                <button 
+                  onClick={() => setPendingSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+                  className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors group"
+                  title="Sort by Time"
+                >
+                  <ArrowUpDown className={`w-4 h-4 text-on-surface-variant group-hover:text-yellow-500 transition-colors ${pendingSortOrder === "asc" ? "rotate-180" : ""}`} />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="min-h-[300px]">
             {logLoading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                <p className="text-sm text-on-surface-variant animate-pulse">Loading daily log...</p>
+                <div className={`w-12 h-12 border-4 rounded-full animate-spin ${taskTab === 'completed' ? 'border-primary/20 border-t-primary' : 'border-yellow-500/20 border-t-yellow-500'}`} />
+                <p className="text-sm text-on-surface-variant animate-pulse">Loading {taskTab} tasks...</p>
               </div>
-            ) : paginatedTasks.length > 0 ? (
-              <div className="divide-y divide-white/5">
-                {paginatedTasks.map((task) => (
-                  <button 
-                    key={task.id} 
-                    onClick={() => setSelectedTask(task)}
-                    className="w-full text-left p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors group"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="mt-1 w-8 h-8 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0">
-                        <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{task.title}</h4>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                          <p className="text-xs text-on-surface-variant flex items-center gap-1.5">
-                            <Clock className="w-3 h-3" />
-                            Marked as done at {format(new Date(task.completedAt), "hh:mm a")}
-                          </p>
-                          <p className="text-xs text-primary/80 font-medium flex items-center gap-1.5">
-                            <Clock className="w-3 h-3" />
-                            Time taken: {formatSeconds(task.totalTimeSpent)}
-                          </p>
-                          {task.replies && task.replies.length > 0 && (
-                            <p className="text-xs text-blue-400 font-medium flex items-center gap-1.5">
-                              <LayoutGrid className="w-3 h-3" />
-                              {task.replies.length} Report(s)
+            ) : taskTab === "completed" ? (
+              paginatedTasks.length > 0 ? (
+                <div className="divide-y divide-white/5 animate-in fade-in duration-300">
+                  {paginatedTasks.map((task) => (
+                    <button 
+                      key={task.id} 
+                      onClick={() => setSelectedTask(task)}
+                      className="w-full text-left p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors group"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="mt-1 w-8 h-8 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{task.title}</h4>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                            <p className="text-xs text-on-surface-variant flex items-center gap-1.5">
+                              <Clock className="w-3 h-3" />
+                              Marked as done at {format(new Date(task.completedAt), "hh:mm a")}
                             </p>
-                          )}
+                            <p className="text-xs text-primary/80 font-medium flex items-center gap-1.5">
+                              <Clock className="w-3 h-3" />
+                              Time taken: {formatSeconds(task.totalTimeSpent)}
+                            </p>
+                            {task.replies && task.replies.length > 0 && (
+                              <p className="text-xs text-blue-400 font-medium flex items-center gap-1.5">
+                                <LayoutGrid className="w-3 h-3" />
+                                {task.replies.length} Report(s)
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="text-[10px] font-bold text-outline-variant bg-white/5 px-2.5 py-1 rounded-full uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                      Completed
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-                <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 text-on-surface-variant">
-                  <Clock className="w-8 h-8 opacity-20" />
+                      <div className="text-[10px] font-bold text-outline-variant bg-white/5 px-2.5 py-1 rounded-full uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                        Completed
+                      </div>
+                    </button>
+                  ))}
                 </div>
-                <h3 className="text-lg font-bold text-on-surface mb-1">No tasks found</h3>
-                <p className="text-sm text-on-surface-variant max-w-xs">
-                  {taskSearch ? "Try adjusting your filter to find what you're looking for." : "No tasks were marked as completed on this day."}
-                </p>
-              </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 text-center px-6 animate-in fade-in duration-300">
+                  <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 text-on-surface-variant">
+                    <CheckCircle2 className="w-8 h-8 opacity-20" />
+                  </div>
+                  <h3 className="text-lg font-bold text-on-surface mb-1">No completed tasks found</h3>
+                  <p className="text-sm text-on-surface-variant max-w-xs">
+                    {taskSearch ? "Try adjusting your filter to find what you're looking for." : "No tasks were marked as completed on this day."}
+                  </p>
+                </div>
+              )
+            ) : (
+              paginatedPendingTasks.length > 0 ? (
+                <div className="divide-y divide-white/5 animate-in fade-in duration-300">
+                  {paginatedPendingTasks.map((task) => (
+                    <div 
+                      key={task.id} 
+                      className="w-full text-left p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors group"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="mt-1 w-8 h-8 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center flex-shrink-0">
+                          <Clock className="w-4 h-4 text-yellow-500" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-on-surface group-hover:text-yellow-500 transition-colors">{task.title}</h4>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                            <p className="text-xs text-on-surface-variant flex items-center gap-1.5">
+                              <Clock className="w-3 h-3" />
+                              Created at {format(new Date(task.createdAt), "hh:mm a")}
+                            </p>
+                            <p className="text-xs text-yellow-500/80 font-medium flex items-center gap-1.5">
+                              <Clock className="w-3 h-3" />
+                              Time spent: {formatSeconds(task.totalTimeSpent)}
+                            </p>
+                            <p className="text-xs text-purple-400 font-medium capitalize">
+                              Priority: {task.priority}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-bold text-outline-variant bg-white/5 px-2.5 py-1 rounded-full uppercase tracking-widest group-hover:bg-yellow-500/10 group-hover:text-yellow-500 transition-colors">
+                        {task.status.replace('-', ' ')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 text-center px-6 animate-in fade-in duration-300">
+                  <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 text-on-surface-variant">
+                    <Clock className="w-8 h-8 opacity-20" />
+                  </div>
+                  <h3 className="text-lg font-bold text-on-surface mb-1">No uncompleted tasks</h3>
+                  <p className="text-sm text-on-surface-variant max-w-xs">
+                    {pendingSearch ? "No tasks matching your filter." : "This staff member has no uncompleted tasks for this day!"}
+                  </p>
+                </div>
+              )
             )}
           </div>
 
-          {/* Task Pagination */}
-          {totalTaskPages > 1 && (
-            <div className="p-4 border-t border-white/5 flex items-center justify-between">
-              <span className="text-xs text-on-surface-variant">
-                Showing {paginatedTasks.length} of {filteredTasks.length} tasks
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  disabled={taskPage === 1}
-                  onClick={() => setTaskPage(prev => prev - 1)}
-                  className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-30"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-xs font-bold text-on-surface px-2">
-                  Page {taskPage} of {totalTaskPages}
+          {/* Pagination */}
+          {taskTab === "completed" ? (
+            totalTaskPages > 1 && (
+              <div className="p-4 border-t border-white/5 flex items-center justify-between">
+                <span className="text-xs text-on-surface-variant">
+                  Showing {paginatedTasks.length} of {filteredTasks.length} tasks
                 </span>
-                <button
-                  disabled={taskPage === totalTaskPages}
-                  onClick={() => setTaskPage(prev => prev + 1)}
-                  className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-30"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={taskPage === 1}
+                    onClick={() => setTaskPage(prev => prev - 1)}
+                    className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-30"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs font-bold text-on-surface px-2">
+                    Page {taskPage} of {totalTaskPages}
+                  </span>
+                  <button
+                    disabled={taskPage === totalTaskPages}
+                    onClick={() => setTaskPage(prev => prev + 1)}
+                    className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-30"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )
+          ) : (
+            totalPendingPages > 1 && (
+              <div className="p-4 border-t border-white/5 flex items-center justify-between">
+                <span className="text-xs text-on-surface-variant">
+                  Showing {paginatedPendingTasks.length} of {filteredPendingTasks.length} tasks
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={pendingPage === 1}
+                    onClick={() => setPendingPage(prev => prev - 1)}
+                    className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-30"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs font-bold text-on-surface px-2">
+                    Page {pendingPage} of {totalPendingPages}
+                  </span>
+                  <button
+                    disabled={pendingPage === totalPendingPages}
+                    onClick={() => setPendingPage(prev => prev + 1)}
+                    className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-30"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )
           )}
         </div>
 
