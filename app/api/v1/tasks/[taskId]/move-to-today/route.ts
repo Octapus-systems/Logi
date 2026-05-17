@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -49,9 +50,11 @@ export async function POST(
       );
     }
 
-    // Update createdAt to now
-    task.createdAt = new Date();
-    await task.save();
+    // Use native MongoDB driver to bypass Mongoose's strict immutability on createdAt
+    await Task.collection.updateOne(
+      { _id: new mongoose.Types.ObjectId(taskId) },
+      { $set: { createdAt: new Date() } }
+    );
 
     return NextResponse.json({
       success: true,

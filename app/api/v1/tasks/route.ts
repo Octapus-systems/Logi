@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       // Pending shows all uncompleted tasks (anything not 'done')
       // This matches the "Uncompleted Tasks" logic in the attendance module
       query.status = { $ne: 'done' };
-      query.isScheduled = false; 
+      query.isScheduled = { $ne: true }; 
     }
 
     // Handle standard status filter
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
     delete countQuery.isScheduled;
 
     const [pendingCount, scheduledCount, activeCount, stuckCount, doneCount] = await Promise.all([
-      Task.countDocuments({ ...countQuery, status: { $ne: 'done' }, isScheduled: false }),
+      Task.countDocuments({ ...countQuery, status: { $ne: 'done' }, isScheduled: { $ne: true } }),
       Task.countDocuments({ ...countQuery, isScheduled: true }),
       Task.countDocuments({ ...countQuery, status: 'in-progress' }),
       Task.countDocuments({ ...countQuery, status: 'stuck' }),
