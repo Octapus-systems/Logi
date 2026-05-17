@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processLifeDeductions } from '@/lib/lives/deductionJob';
 import connectDB from '@/lib/db';
 
-/**
- * POST /api/v1/lives/cron
- * Internal endpoint triggered by cron job to process life deductions
- * Should be protected by cron secret or internal network only
- */
+
 export async function POST(request: NextRequest) {
   try {
     // Verify cron secret for security
@@ -51,10 +47,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * GET /api/v1/lives/cron
- * Health check endpoint for the cron job
- */
+
 export async function GET(request: NextRequest) {
   return NextResponse.json({
     success: true,

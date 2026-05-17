@@ -6,18 +6,13 @@ import Attendance from '@/models/Attendance';
 import User from '@/models/User';
 import { processLifeDeductions } from '@/lib/lives/deductionJob';
 
-/**
- * Get today's date at midnight for consistent querying
- */
 function getToday(): Date {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
   return today;
 }
 
-/**
- * Calculate minutes until next deduction
- */
+
 function calculateMinutesUntilDeduction(
   lastReplyAt: Date | null,
   lastDeductionAt: Date | null,
@@ -52,12 +47,6 @@ function calculateMinutesUntilDeduction(
   return diffMinutes > 0 ? diffMinutes : 0;
 }
 
-/**
- * GET /api/v1/lives
- * Get current lives status
- * - Staff: Returns own lives status
- * - Admin: Returns all checked-in staff lives status
- */
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

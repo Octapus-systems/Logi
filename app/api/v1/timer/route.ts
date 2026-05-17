@@ -7,18 +7,13 @@ import Attendance from '@/models/Attendance';
 import { resetActivityTimer } from '@/lib/lives/deductionJob';
 import { z } from 'zod';
 
-/**
- * Timer action validation schema
- */
+
 const timerSchema = z.object({
   taskId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid task ID'),
   action: z.enum(['start', 'stop']),
 });
 
-/**
- * POST /api/v1/timer
- * Start or stop task timer
- */
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -209,10 +204,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * GET /api/v1/timer
- * Get timer status for a specific task
- */
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

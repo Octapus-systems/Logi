@@ -11,6 +11,8 @@ interface StaffMember {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  isCheckedIn?: boolean;
+  isOnBreak?: boolean;
 }
 
 interface Task {
@@ -49,6 +51,16 @@ interface Reply {
   taskTitle: string;
   message: string;
   timeAgo: string;
+  timestamp: Date;
+}
+
+interface LiveAttendance {
+  userId: string;
+  name: string;
+  email: string;
+  lives: number;
+  isOnBreak: boolean;
+  checkInTime: string;
 }
 
 export function useAdminData() {
@@ -66,13 +78,34 @@ export function useAdminData() {
       }
       const result = await response.json();
       if (result.success) {
-        setStaffMembers(result.data);
+        // Transform _id to id for consistency
+        return result.data.map((s: any) => ({
+          ...s,
+          id: s._id || s.id
+        }));
       } else {
         throw new Error(result.message || "Failed to fetch staff members");
       }
     } catch (err) {
       console.error("Error fetching staff members:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
+      throw err;
+    }
+  };
+
+  const fetchLiveAttendance = async () => {
+    try {
+      const response = await fetch("/api/v1/lives");
+      if (!response.ok) {
+        throw new Error("Failed to fetch live attendance");
+      }
+      const result = await response.json();
+      if (result.success) {
+        return result.data as LiveAttendance[];
+      }
+      return [];
+    } catch (err) {
+      console.error("Error fetching live attendance:", err);
+      return [];
     }
   };
 
@@ -84,33 +117,13 @@ export function useAdminData() {
       }
       const result = await response.json();
       if (result.success) {
-        setTasks(result.data);
-        // Extract replies from tasks
-        const allReplies: Reply[] = [];
-        result.data.forEach((task: Task) => {
-          if (task.replies && task.replies.length > 0) {
-            task.replies.forEach((reply, index) => {
-              allReplies.push({
-                id: `${task.id}-${index}`,
-                staffName: task.assignedTo.name,
-                taskTitle: task.title,
-                message: reply.content,
-                timeAgo: formatTimeAgo(new Date(reply.createdAt)),
-              });
-            });
-          }
-        });
-        // Sort replies by most recent first
-        allReplies.sort((a, b) => 
-          new Date(b.timeAgo).getTime() - new Date(a.timeAgo).getTime()
-        );
-        setReplies(allReplies.slice(0, 10)); // Show only 10 most recent replies
+        return result.data as Task[];
       } else {
         throw new Error(result.message || "Failed to fetch tasks");
       }
     } catch (err) {
       console.error("Error fetching tasks:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
+      throw err;
     }
   };
 
@@ -118,25 +131,69 @@ export function useAdminData() {
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
     
-    if (diffInSeconds < 60) {
-      return "just now";
-    } else if (diffInSeconds < 3600) {
+    if (diffInSeconds < 60) return "just now";
+    if (diffInSeconds < 3600) {
       const minutes = Math.floor(diffInSeconds / 60);
-      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    } else if (diffInSeconds < 86400) {
-      const hours = Math.floor(diffInSeconds / 3600);
-      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    } else {
-      const days = Math.floor(diffInSeconds / 86400);
-      return `${days} day${days > 1 ? 's' : ''} ago`;
+      return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
     }
+    if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    }
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days} day${days !== 1 ? 's' : ''} ago`;
   };
 
   const refreshData = async () => {
     setLoading(true);
     setError(null);
-    await Promise.all([fetchStaffMembers(), fetchTasks()]);
-    setLoading(false);
+    try {
+      const [staffData, taskData, liveData] = await Promise.all([
+        fetchStaffMembers(),
+        fetchTasks(),
+        fetchLiveAttendance()
+      ]);
+
+      // Merge live attendance into staff members
+      const enhancedStaff = staffData.map((staff: StaffMember) => {
+        const live = liveData.find(l => l.userId === staff.id);
+        return {
+          ...staff,
+          isCheckedIn: !!live,
+          isOnBreak: live?.isOnBreak || false,
+          lives: live ? live.lives : staff.lives
+        };
+      });
+
+      setStaffMembers(enhancedStaff);
+      setTasks(taskData);
+
+      // Extract and sort replies
+      const allReplies: Reply[] = [];
+      taskData.forEach((task: Task) => {
+        if (task.replies && task.replies.length > 0) {
+          task.replies.forEach((reply, index) => {
+            allReplies.push({
+              id: `${task.id}-${index}`,
+              staffName: task.assignedTo?.name || "Unknown",
+              taskTitle: task.title,
+              message: reply.content,
+              timeAgo: formatTimeAgo(new Date(reply.createdAt)),
+              timestamp: new Date(reply.createdAt)
+            });
+          });
+        }
+      });
+
+      // Sort by real timestamp
+      allReplies.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      setReplies(allReplies.slice(0, 10));
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

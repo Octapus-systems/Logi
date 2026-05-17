@@ -20,6 +20,8 @@ export interface ITask extends Document {
   priority: TaskPriority;
   assignedTo: mongoose.Types.ObjectId;
   assignedBy: mongoose.Types.ObjectId;
+  scheduledFor?: Date;      // When the task should become active (null = immediate)
+  isScheduled: boolean;     // Whether this task is waiting for scheduled time
   createdAt: Date;
   updatedAt: Date;
   startedAt?: Date;
@@ -93,6 +95,14 @@ const TaskSchema = new Schema<ITask>(
       ref: 'User',
       required: [true, 'Task must have an assigner'],
     },
+    scheduledFor: {
+      type: Date,
+      default: null,
+    },
+    isScheduled: {
+      type: Boolean,
+      default: false,
+    },
     startedAt: {
       type: Date,
       default: null,
@@ -128,6 +138,7 @@ const TaskSchema = new Schema<ITask>(
 // Indexes for efficient querying
 TaskSchema.index({ assignedTo: 1, status: 1 });
 TaskSchema.index({ createdAt: -1 });
+TaskSchema.index({ isScheduled: 1, scheduledFor: 1 });
 TaskSchema.index({ status: 1 });
 
 /**

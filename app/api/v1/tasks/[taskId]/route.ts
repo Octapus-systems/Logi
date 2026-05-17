@@ -8,9 +8,7 @@ import { resetActivityTimer } from '@/lib/lives/deductionJob';
 import { sendTaskDoneEmail } from '@/lib/email';
 import { z } from 'zod';
 
-/**
- * Task update validation schema
- */
+
 const updateTaskSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).optional(),
@@ -18,9 +16,7 @@ const updateTaskSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
 });
 
-/**
- * Task reply validation schema
- */
+
 const addReplySchema = z.object({
   content: z.string().min(1).max(1000),
 });
@@ -29,10 +25,7 @@ interface RouteParams {
   params: Promise<{ taskId: string }>;
 }
 
-/**
- * GET /api/v1/tasks/[taskId]
- * Get a specific task by ID
- */
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
@@ -119,10 +112,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * PATCH /api/v1/tasks/[taskId]
- * Update a task
- */
+
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
@@ -284,10 +274,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-/**
- * POST /api/v1/tasks/[taskId]/reply
- * Add a reply to a task
- */
+
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
@@ -402,6 +389,45 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     console.error('POST /api/v1/tasks/[taskId] reply error:', error);
     return NextResponse.json(
       { success: false, message: 'Failed to add reply', error: 'INTERNAL_ERROR' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user || session.user.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized', error: 'UNAUTHORIZED' },
+        { status: 401 }
+      );
+    }
+
+    const { taskId } = await params;
+
+    await connectDB();
+
+    const task = await Task.findById(taskId);
+
+    if (!task) {
+      return NextResponse.json(
+        { success: false, message: 'Task not found', error: 'NOT_FOUND' },
+        { status: 404 }
+      );
+    }
+
+    await Task.findByIdAndDelete(taskId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Task deleted successfully',
+    });
+  } catch (error) {
+    console.error('DELETE /api/v1/tasks/[taskId] error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Failed to delete task', error: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }
