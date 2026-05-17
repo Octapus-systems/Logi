@@ -93,6 +93,7 @@ export default function AttendancePage() {
   const [pendingSortOrder, setPendingSortOrder] = useState<"asc" | "desc">("desc");
 
   const [taskTab, setTaskTab] = useState<"completed" | "uncompleted">("completed");
+  const [movingTask, setMovingTask] = useState<string | null>(null);
 
   // Fetch Staff List
   useEffect(() => {
@@ -196,6 +197,26 @@ export default function AttendancePage() {
     }
   };
 
+  const handleMoveToToday = async (taskId: string) => {
+    setMovingTask(taskId);
+    try {
+      const res = await fetch(`/api/v1/tasks/${taskId}/move-to-today`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAttendanceLog();
+      } else {
+        alert(data.message || "Failed to move task");
+      }
+    } catch (error) {
+      console.error("Move to today failed:", error);
+      alert("An error occurred");
+    } finally {
+      setMovingTask(null);
+    }
+  };
+
   const livesToHours = (lives: number) => {
     return lives; // 1 life = 1 hour rule
   };
@@ -237,6 +258,8 @@ export default function AttendancePage() {
   );
 
   const totalPendingPages = Math.ceil(filteredPendingTasks.length / tasksPerPage);
+
+  const isPastDate = format(selectedDate, "yyyy-MM-dd") < format(new Date(), "yyyy-MM-dd");
 
   if (view === "detail" && selectedStaff) {
     return (
@@ -518,8 +541,24 @@ export default function AttendancePage() {
                           </div>
                         </div>
                       </div>
-                      <div className="text-[10px] font-bold text-outline-variant bg-white/5 px-2.5 py-1 rounded-full uppercase tracking-widest group-hover:bg-yellow-500/10 group-hover:text-yellow-500 transition-colors">
-                        {task.status.replace('-', ' ')}
+                      <div className="flex items-center gap-3">
+                        {isPastDate && (
+                          <button
+                            onClick={() => handleMoveToToday(task.id)}
+                            disabled={movingTask === task.id}
+                            className="text-xs font-bold bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-lg hover:bg-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1"
+                          >
+                            {movingTask === task.id ? (
+                              <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            ) : (
+                              <Calendar className="w-3 h-3" />
+                            )}
+                            Add to Today
+                          </button>
+                        )}
+                        <div className="text-[10px] font-bold text-outline-variant bg-white/5 px-2.5 py-1 rounded-full uppercase tracking-widest group-hover:bg-yellow-500/10 group-hover:text-yellow-500 transition-colors">
+                          {task.status.replace('-', ' ')}
+                        </div>
                       </div>
                     </div>
                   ))}
