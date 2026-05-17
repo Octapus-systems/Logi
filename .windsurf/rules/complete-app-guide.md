@@ -296,3 +296,4 @@ logi/
 - Never use default exports for types — always use named exports
 - Never create a new API route without proper error handling
 - Never store sensitive data in localStorage — use secure HTTP-only cookies
+- Never change the schedule time of crons — Vercel Hobby tier strictly requires them to be daily (e.g., "0 0 * * *")

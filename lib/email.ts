@@ -58,9 +58,10 @@ export async function sendTaskAssignedEmail(
     const info = await transporter.sendMail(mailOptions);
     console.log('Task assigned email sent: %s', info.messageId);
     return true;
-  } catch (error: any) {
-    console.error('Error sending task assigned email:', error.message || error);
-    if (error.code === 'EAUTH') {
+  } catch (error) {
+    const err = error as { message?: string; code?: string };
+    console.error('Error sending task assigned email:', err.message || error);
+    if (err.code === 'EAUTH') {
       console.error('SMTP Authentication failed. Check SMTP_USER and SMTP_PASS (App Password if using Gmail).');
     }
     return false;
@@ -93,8 +94,9 @@ export async function sendCheckInEmail(staffName: string, time: Date) {
     const info = await transporter.sendMail(mailOptions);
     console.log('Check-in email sent: %s', info.messageId);
     return true;
-  } catch (error: any) {
-    console.error('Error sending check-in email:', error.message || error);
+  } catch (error) {
+    const err = error as { message?: string };
+    console.error('Error sending check-in email:', err.message || error);
     return false;
   }
 }
@@ -125,8 +127,9 @@ export async function sendCheckOutEmail(staffName: string, time: Date) {
     const info = await transporter.sendMail(mailOptions);
     console.log('Check-out email sent: %s', info.messageId);
     return true;
-  } catch (error: any) {
-    console.error('Error sending check-out email:', error.message || error);
+  } catch (error) {
+    const err = error as { message?: string };
+    console.error('Error sending check-out email:', err.message || error);
     return false;
   }
 }
@@ -163,8 +166,9 @@ export async function sendTaskDoneEmail(
     const info = await transporter.sendMail(mailOptions);
     console.log('Task completed email sent: %s', info.messageId);
     return true;
-  } catch (error: any) {
-    console.error('Error sending task completed email:', error.message || error);
+  } catch (error) {
+    const err = error as { message?: string };
+    console.error('Error sending task completed email:', err.message || error);
     return false;
   }
 }

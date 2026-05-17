@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     const { staffId, date: dateStr } = validationResult.data;
     const date = new Date(dateStr);
-    date.setHours(0, 0, 0, 0);
+    date.setUTCHours(0, 0, 0, 0);
 
     await connectDB();
 

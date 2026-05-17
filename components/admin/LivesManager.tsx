@@ -159,75 +159,109 @@ export function LivesManager() {
             {allStaffLives.map((staff) => (
               <div
                 key={staff.userId}
-                className="flex flex-wrap items-center gap-3 p-3 sm:p-4 bg-surface-container-high/50 rounded-xl"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 bg-surface-container-high/50 border border-white/5 rounded-xl hover:border-white/10 transition-colors"
               >
-                {/* Staff Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-on-surface truncate">{staff.name}</p>
-                  <p className="text-xs text-outline truncate">{staff.email}</p>
-                </div>
-
-                {/* Lives Display */}
-                <div className="flex items-center gap-1.5">
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4].map((i) => {
-                      const isFull = i <= staff.lives;
-                      const isHalf = !isFull && i - 0.5 <= staff.lives;
-                      const fillType = isFull ? 'full' : isHalf ? 'half' : 'empty';
-                      
-                      return (
-                        <HeartIcon
-                          key={i}
-                          fillType={fillType}
-                          className={
-                            fillType !== 'empty'
-                              ? staff.lives <= 1
-                                ? "text-red-400"
-                                : staff.lives <= 2
-                                ? "text-yellow-400"
-                                : "text-primary"
-                              : "text-outline/30"
-                          }
-                        />
-                      );
-                    })}
+                {/* Top Section / Main Info: Staff Name/Email + Break status */}
+                <div className="flex items-center justify-between w-full sm:w-auto sm:flex-1 min-w-0 gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-on-surface truncate">{staff.name}</p>
+                      {staff.isOnBreak && (
+                        <span className="flex h-2 w-2 relative">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-outline truncate">{staff.email}</p>
                   </div>
-                  <span className={`text-xl font-bold w-7 text-center ${staff.lives <= 1 ? "text-red-400" : staff.lives <= 2 ? "text-yellow-400" : "text-primary"}`}>
-                    {staff.lives.toFixed(1)}
-                  </span>
+                  
+                  {/* Status Badge shown on the right side of staff info on mobile */}
+                  <div className="flex-shrink-0 sm:hidden">
+                    {staff.isOnBreak ? (
+                      <div className="px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase text-amber-400 bg-amber-500/10 border-amber-500/30 animate-pulse">
+                        ON BREAK
+                      </div>
+                    ) : (
+                      <div className={`px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase ${getStatusColor(staff.lives, staff.isHalfDay)}`}>
+                        {staff.isHalfDay ? "HALF DAY" : "FULL DAY"}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Status Badge */}
-                <div className={`px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase ${getStatusColor(staff.lives, staff.isHalfDay)}`}>
-                  {staff.isHalfDay ? "HALF DAY" : "FULL DAY"}
-                </div>
+                {/* Bottom Section (on mobile) / Right Section (on desktop): Stats + Badges + Buttons */}
+                <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 w-full sm:w-auto border-t border-white/5 pt-2.5 sm:border-t-0 sm:pt-0">
+                  {/* Lives Display */}
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4].map((i) => {
+                        const isFull = i <= staff.lives;
+                        const isHalf = !isFull && i - 0.5 <= staff.lives;
+                        const fillType = isFull ? 'full' : isHalf ? 'half' : 'empty';
+                        
+                        return (
+                          <HeartIcon
+                            key={i}
+                            fillType={fillType}
+                            className={
+                              fillType !== 'empty'
+                                ? staff.lives <= 1
+                                  ? "text-red-400"
+                                  : staff.lives <= 2
+                                  ? "text-yellow-400"
+                                  : "text-primary"
+                                : "text-outline/30"
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                    <span className={`text-xl font-bold w-7 text-center ${staff.lives <= 1 ? "text-red-400" : staff.lives <= 2 ? "text-yellow-400" : "text-primary"}`}>
+                      {staff.lives.toFixed(1)}
+                    </span>
+                  </div>
 
-                {/* Last Activity — hidden on very small screens */}
-                <div className="hidden sm:block text-right min-w-[90px]">
-                  <p className="text-[10px] text-outline">Last reply:</p>
-                  <p className={`text-xs ${staff.minutesUntilDeduction !== null && staff.minutesUntilDeduction <= 5 ? "text-red-400" : "text-on-surface"}`}>
-                    {formatTimeSince(staff.lastReplyAt)}
-                  </p>
-                </div>
+                  {/* Status Badge (hidden on mobile, shown on desktop) */}
+                  <div className="hidden sm:block">
+                    {staff.isOnBreak ? (
+                      <div className="px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase text-amber-400 bg-amber-500/10 border-amber-500/30 animate-pulse">
+                        ON BREAK
+                      </div>
+                    ) : (
+                      <div className={`px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase ${getStatusColor(staff.lives, staff.isHalfDay)}`}>
+                        {staff.isHalfDay ? "HALF DAY" : "FULL DAY"}
+                      </div>
+                    )}
+                  </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openAdjustModal(staff, "give")}
-                    disabled={staff.lives >= 4}
-                    className="w-9 h-9 rounded-xl bg-green-500/20 text-green-400 text-sm font-bold hover:bg-green-500/30 transition-colors disabled:opacity-30 flex items-center justify-center"
-                    title="Give Life"
-                  >
-                    +1
-                  </button>
-                  <button
-                    onClick={() => openAdjustModal(staff, "remove")}
-                    disabled={staff.lives <= 0}
-                    className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 text-sm font-bold hover:bg-red-500/30 transition-colors disabled:opacity-30 flex items-center justify-center"
-                    title="Remove Life"
-                  >
-                    -1
-                  </button>
+                  {/* Last Activity — hidden on very small screens */}
+                  <div className="hidden sm:block text-right min-w-[90px]">
+                    <p className="text-[10px] text-outline">Last reply:</p>
+                    <p className={`text-xs ${staff.minutesUntilDeduction !== null && staff.minutesUntilDeduction <= 5 ? "text-red-400" : "text-on-surface"}`}>
+                      {formatTimeSince(staff.lastReplyAt)}
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openAdjustModal(staff, "give")}
+                      disabled={staff.lives >= 4}
+                      className="w-9 h-9 rounded-xl bg-green-500/20 text-green-400 text-sm font-bold hover:bg-green-500/30 transition-colors disabled:opacity-30 flex items-center justify-center"
+                      title="Give Life"
+                    >
+                      +1
+                    </button>
+                    <button
+                      onClick={() => openAdjustModal(staff, "remove")}
+                      disabled={staff.lives <= 0}
+                      className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 text-sm font-bold hover:bg-red-500/30 transition-colors disabled:opacity-30 flex items-center justify-center"
+                      title="Remove Life"
+                    >
+                      -1
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

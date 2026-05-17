@@ -3,14 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Attendance from '@/models/Attendance';
-import User from '@/models/User';
-import { processLifeDeductions } from '@/lib/lives/deductionJob';
-
-function getToday(): Date {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  return today;
-}
+import { getToday } from '@/lib/dateUtils';
 
 
 function calculateMinutesUntilDeduction(
@@ -59,10 +52,6 @@ export async function GET(request: NextRequest) {
     }
 
     await connectDB();
-    
-    // Process deductions automatically before reading status to ensure no delay
-    // This is especially useful in local dev or if cron job misses a beat
-    await processLifeDeductions();
 
     const today = getToday();
 
