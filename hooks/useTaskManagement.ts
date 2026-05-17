@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Swal from "sweetalert2";
 
 export interface TaskItem {
   id: string;
@@ -169,7 +170,28 @@ export function useTaskManagement(options?: UseTaskManagementOptions) {
   }, [filter, currentPage, searchQuery, priorityFilter, staffFilter, dateFilter]);
 
   const deleteTask = async (taskId: string) => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    const result = await Swal.fire({
+      title: "Delete Task?",
+      text: "This action cannot be undone.",
+      showCancelButton: true,
+      confirmButtonText: "Delete",
+      cancelButtonText: "Cancel",
+      background: "#121212",
+      color: "#ffffff",
+      width: "300px",
+      padding: "1.5rem",
+      buttonsStyling: false,
+      customClass: {
+        popup: "rounded-[24px] border border-white/5 shadow-2xl",
+        title: "text-base font-bold m-0 p-0",
+        htmlContainer: "text-xs text-white/50 mt-2 mb-6 p-0",
+        actions: "flex gap-2 w-full m-0 p-0",
+        confirmButton: "flex-1 bg-red-500/10 text-red-500 hover:bg-red-500/20 py-2.5 rounded-xl text-sm font-bold transition-colors",
+        cancelButton: "flex-1 bg-white/5 text-white/70 hover:bg-white/10 py-2.5 rounded-xl text-sm font-bold transition-colors",
+      }
+    });
+
+    if (!result.isConfirmed) return;
     
     try {
       const response = await fetch(`/api/v1/tasks/${taskId}`, {
@@ -182,12 +204,54 @@ export function useTaskManagement(options?: UseTaskManagementOptions) {
         setTotalCount(prev => prev - 1);
         // Refresh full data to keep counts in sync
         fetchTasks();
+        
+        Swal.fire({
+          title: "Deleted",
+          icon: "success",
+          background: "#121212",
+          color: "#ffffff",
+          timer: 1500,
+          width: "280px",
+          showConfirmButton: false,
+          customClass: {
+            popup: "rounded-[24px] border border-white/5 shadow-2xl",
+            title: "text-sm font-bold mt-2",
+          }
+        });
       } else {
-        alert(result.message || "Failed to delete task");
+        Swal.fire({
+          title: "Error",
+          text: result.message || "Failed to delete task",
+          icon: "error",
+          background: "#121212",
+          color: "#ffffff",
+          width: "300px",
+          buttonsStyling: false,
+          customClass: {
+            popup: "rounded-[24px] border border-white/5 shadow-2xl",
+            title: "text-base font-bold",
+            htmlContainer: "text-xs text-white/50 mb-4",
+            confirmButton: "w-full bg-white/5 text-white hover:bg-white/10 py-2.5 rounded-xl text-sm font-bold transition-colors",
+          }
+        });
       }
     } catch (err) {
       console.error("Error deleting task:", err);
-      alert("An error occurred while deleting the task");
+      Swal.fire({
+        title: "Error",
+        text: "An error occurred while deleting the task",
+        icon: "error",
+        background: "#121212",
+        color: "#ffffff",
+        width: "300px",
+        buttonsStyling: false,
+        customClass: {
+          popup: "rounded-[24px] border border-white/5 shadow-2xl",
+          title: "text-base font-bold",
+          htmlContainer: "text-xs text-white/50 mb-4",
+          confirmButton: "w-full bg-white/5 text-white hover:bg-white/10 py-2.5 rounded-xl text-sm font-bold transition-colors",
+        }
+      });
     }
   };
 
