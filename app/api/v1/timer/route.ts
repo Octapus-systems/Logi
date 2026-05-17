@@ -6,6 +6,7 @@ import Task from '@/models/Task';
 import Attendance from '@/models/Attendance';
 import { resetActivityTimer } from '@/lib/lives/deductionJob';
 import { z } from 'zod';
+import { getToday } from '@/lib/dateUtils';
 
 
 const timerSchema = z.object({
@@ -72,8 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is checked in
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getToday();
     
     const attendance = await Attendance.findOne({
       userId: session.user.id,

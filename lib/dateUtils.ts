@@ -2,6 +2,16 @@
  * Get the date range for "today" in Indian Standard Time (IST)
  * IST is UTC + 5:30
  */
+/**
+ * Get today's date at UTC midnight for consistent database querying.
+ * All attendance/lives queries use this as the canonical "today" boundary.
+ */
+export function getToday(): Date {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  return today;
+}
+
 export function getISTTodayRange() {
   const now = new Date();
   // IST offset is 5.5 hours

@@ -5,6 +5,7 @@ import connectDB from '@/lib/db';
 import Attendance from '@/models/Attendance';
 import LifeHistory from '@/models/LifeHistory';
 import { z } from 'zod';
+import { getToday } from '@/lib/dateUtils';
 
 const adjustLivesSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
@@ -13,11 +14,6 @@ const adjustLivesSchema = z.object({
   reason: z.string().min(1).max(500),
 });
 
-function getToday(): Date {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  return today;
-}
 
 export async function POST(request: NextRequest) {
   try {

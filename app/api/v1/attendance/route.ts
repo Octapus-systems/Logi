@@ -7,16 +7,12 @@ import Task from '@/models/Task';
 import { initializeLivesOnCheckIn } from '@/lib/lives/deductionJob';
 import { sendCheckInEmail, sendCheckOutEmail } from '@/lib/email';
 import { z } from 'zod';
+import { getToday } from '@/lib/dateUtils';
 
 const checkInSchema = z.object({}).passthrough();
 const checkOutSchema = z.object({}).passthrough();
 
 
-function getToday(): Date {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  return today;
-}
 
 export async function GET(request: NextRequest) {
   try {

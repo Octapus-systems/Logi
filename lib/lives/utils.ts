@@ -22,10 +22,8 @@ export function getResetLivesValue(): number {
 }
 
 /**
- * Get today's date at midnight for consistent querying
+ * Re-export centralized getToday() for backward compatibility.
+ * Uses UTC midnight for consistent database querying.
  */
-export function getToday(): Date {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
-}
+export { getToday } from '@/lib/dateUtils';
+

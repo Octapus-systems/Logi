@@ -72,22 +72,26 @@ export function TaskTable({ tasks }: TaskTableProps) {
     if (!sortConfig) return filteredTasks;
 
     return [...filteredTasks].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: unknown;
+      let bValue: unknown;
 
       if (sortConfig.key === 'assignedTo.name') {
         aValue = a.assignedTo.name;
         bValue = b.assignedTo.name;
       } else {
-        aValue = (a as any)[sortConfig.key];
-        bValue = (b as any)[sortConfig.key];
+        const key = sortConfig.key as keyof Task;
+        aValue = a[key];
+        bValue = b[key];
       }
 
       if (typeof aValue === 'string') aValue = aValue.toLowerCase();
       if (typeof bValue === 'string') bValue = bValue.toLowerCase();
 
-      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      const aValStr = typeof aValue === 'string' ? aValue : '';
+      const bValStr = typeof bValue === 'string' ? bValue : '';
+
+      if (aValStr < bValStr) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValStr > bValStr) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
   }, [filteredTasks, sortConfig]);
@@ -96,7 +100,7 @@ export function TaskTable({ tasks }: TaskTableProps) {
   const totalPages = Math.ceil(sortedTasks.length / itemsPerPage);
   const paginatedTasks = sortedTasks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const requestSort = (key: any) => {
+  const requestSort = (key: keyof Task | 'assignedTo.name') => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
@@ -104,7 +108,7 @@ export function TaskTable({ tasks }: TaskTableProps) {
     setSortConfig({ key, direction });
   };
 
-  const getSortIcon = (key: any) => {
+  const getSortIcon = (key: keyof Task | 'assignedTo.name') => {
     if (!sortConfig || sortConfig.key !== key) return <ArrowUpDown className="w-3 h-3 opacity-20" />;
     return sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 text-primary" /> : <ChevronDown className="w-3 h-3 text-primary" />;
   };

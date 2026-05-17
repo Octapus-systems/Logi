@@ -7,6 +7,7 @@ import Attendance from '@/models/Attendance';
 import { resetActivityTimer } from '@/lib/lives/deductionJob';
 import { sendTaskDoneEmail } from '@/lib/email';
 import { z } from 'zod';
+import { getToday } from '@/lib/dateUtils';
 
 
 const updateTaskSchema = z.object({
@@ -43,8 +44,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Check attendance status for staff
     if (session.user.role === 'staff') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = getToday();
       const attendance = await Attendance.findOne({
         userId: session.user.id,
         date: today,
@@ -145,8 +145,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // Check attendance status for staff
     if (session.user.role === 'staff') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = getToday();
       const attendance = await Attendance.findOne({
         userId: session.user.id,
         date: today,
@@ -307,8 +306,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Check attendance status for staff
     if (session.user.role === 'staff') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = getToday();
       const attendance = await Attendance.findOne({
         userId: session.user.id,
         date: today,

@@ -20,6 +20,7 @@ import {
   LogIn
 } from "lucide-react";
 import { format, subDays, addDays } from "date-fns";
+import Swal from "sweetalert2";
 
 interface StaffMember {
   _id: string;
@@ -187,11 +188,39 @@ export default function AttendancePage() {
         // Refresh log data
         fetchAttendanceLog();
       } else {
-        alert(data.message || "Failed to re-check in");
+        Swal.fire({
+          title: "Failed",
+          text: data.message || "Failed to re-check in",
+          icon: "error",
+          background: "#121212",
+          color: "#ffffff",
+          width: "320px",
+          buttonsStyling: false,
+          customClass: {
+            popup: "rounded-[24px] border border-white/5 shadow-2xl",
+            title: "text-base font-bold",
+            htmlContainer: "text-xs text-white/50 mb-4",
+            confirmButton: "w-full bg-white/5 text-white hover:bg-white/10 py-2.5 rounded-xl text-sm font-bold transition-colors",
+          }
+        });
       }
     } catch (error) {
       console.error("Re-check-in failed:", error);
-      alert("An error occurred during re-check-in");
+      Swal.fire({
+        title: "Error",
+        text: "An error occurred during re-check-in",
+        icon: "error",
+        background: "#121212",
+        color: "#ffffff",
+        width: "320px",
+        buttonsStyling: false,
+        customClass: {
+          popup: "rounded-[24px] border border-white/5 shadow-2xl",
+          title: "text-base font-bold",
+          htmlContainer: "text-xs text-white/50 mb-4",
+          confirmButton: "w-full bg-white/5 text-white hover:bg-white/10 py-2.5 rounded-xl text-sm font-bold transition-colors",
+        }
+      });
     } finally {
       setRecheckinLoading(false);
     }
@@ -207,11 +236,39 @@ export default function AttendancePage() {
       if (data.success) {
         fetchAttendanceLog();
       } else {
-        alert(data.message || "Failed to move task");
+        Swal.fire({
+          title: "Failed",
+          text: data.message || "Failed to move task",
+          icon: "error",
+          background: "#121212",
+          color: "#ffffff",
+          width: "320px",
+          buttonsStyling: false,
+          customClass: {
+            popup: "rounded-[24px] border border-white/5 shadow-2xl",
+            title: "text-base font-bold",
+            htmlContainer: "text-xs text-white/50 mb-4",
+            confirmButton: "w-full bg-white/5 text-white hover:bg-white/10 py-2.5 rounded-xl text-sm font-bold transition-colors",
+          }
+        });
       }
     } catch (error) {
       console.error("Move to today failed:", error);
-      alert("An error occurred");
+      Swal.fire({
+        title: "Error",
+        text: "An error occurred while moving the task",
+        icon: "error",
+        background: "#121212",
+        color: "#ffffff",
+        width: "320px",
+        buttonsStyling: false,
+        customClass: {
+          popup: "rounded-[24px] border border-white/5 shadow-2xl",
+          title: "text-base font-bold",
+          htmlContainer: "text-xs text-white/50 mb-4",
+          confirmButton: "w-full bg-white/5 text-white hover:bg-white/10 py-2.5 rounded-xl text-sm font-bold transition-colors",
+        }
+      });
     } finally {
       setMovingTask(null);
     }
@@ -378,35 +435,35 @@ export default function AttendancePage() {
         {/* Tasks Section with Tabs */}
         <div className="bg-[#161421] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
           <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4 bg-white/5 p-1 rounded-2xl w-full sm:w-auto">
+            <div className="flex items-center gap-1 sm:gap-4 bg-white/5 p-1 rounded-2xl w-full sm:w-auto overflow-x-auto scrollbar-none">
               <button
                 onClick={() => setTaskTab("completed")}
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                   taskTab === "completed" 
                   ? "bg-[#161421] text-primary shadow-lg" 
                   : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
                 }`}
               >
-                <List className={`w-4 h-4 ${taskTab === "completed" ? "text-primary" : ""}`} />
+                <List className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${taskTab === "completed" ? "text-primary" : ""}`} />
                 Completed Tasks
                 {paginatedTasks.length > 0 && (
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] ${taskTab === "completed" ? "bg-primary/20 text-primary" : "bg-white/10 text-on-surface-variant"}`}>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] ${taskTab === "completed" ? "bg-primary/20 text-primary" : "bg-white/10 text-on-surface-variant"}`}>
                     {filteredTasks.length}
                   </span>
                 )}
               </button>
               <button
                 onClick={() => setTaskTab("uncompleted")}
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                   taskTab === "uncompleted" 
                   ? "bg-[#161421] text-yellow-500 shadow-lg" 
                   : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
                 }`}
               >
-                <Clock className={`w-4 h-4 ${taskTab === "uncompleted" ? "text-yellow-500" : ""}`} />
+                <Clock className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${taskTab === "uncompleted" ? "text-yellow-500" : ""}`} />
                 Uncompleted Tasks
                 {paginatedPendingTasks.length > 0 && (
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] ${taskTab === "uncompleted" ? "bg-yellow-500/20 text-yellow-500" : "bg-white/10 text-on-surface-variant"}`}>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] ${taskTab === "uncompleted" ? "bg-yellow-500/20 text-yellow-500" : "bg-white/10 text-on-surface-variant"}`}>
                     {filteredPendingTasks.length}
                   </span>
                 )}
