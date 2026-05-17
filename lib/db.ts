@@ -11,7 +11,9 @@ try {
   // best-effort: if the runtime disallows this, fall back to OS DNS
 }
 
-console.log("[db] dns servers:", dns.getServers());
+if (process.env.NODE_ENV === 'development') {
+  console.log("[db] dns servers:", dns.getServers());
+}
 
 declare global {
   // eslint-disable-next-line no-var
@@ -51,7 +53,9 @@ export default async function connectDB(): Promise<typeof mongoose> {
     throw new Error("MONGO_URI is not defined in environment variables");
   }
 
-  console.log("[db] uri scheme:", mongoUri.startsWith("mongodb+srv://") ? "mongodb+srv" : "mongodb");
+  if (process.env.NODE_ENV === 'development') {
+    console.log("[db] uri scheme:", mongoUri.startsWith("mongodb+srv://") ? "mongodb+srv" : "mongodb");
+  }
 
   if (mongoose.connection.readyState === 1) return mongoose;
 

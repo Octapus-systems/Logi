@@ -79,9 +79,9 @@ export function useAdminData() {
       const result = await response.json();
       if (result.success) {
         // Transform _id to id for consistency
-        return result.data.map((s: any) => ({
+        return result.data.map((s: Omit<StaffMember, 'id'> & { _id?: string; id?: string }) => ({
           ...s,
-          id: s._id || s.id
+          id: s._id || s.id || ""
         }));
       } else {
         throw new Error(result.message || "Failed to fetch staff members");

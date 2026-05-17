@@ -54,7 +54,7 @@ export default function AdminDashboard() {
 
   // Transform staff data to match StaffMember interface
   const staffMembers: StaffMember[] = useMemo(() => {
-    return staffData.map((staff: any) => {
+    return staffData.map((staff: { id: string; name: string; lives: number; isCheckedIn?: boolean; _id?: string }) => {
       // Find tasks assigned to this staff member
       const staffTasks = taskData.filter(task => task.assignedTo?._id === staff.id || task.assignedTo?._id === staff._id);
       const tasksAssigned = staffTasks.length;
@@ -63,7 +63,7 @@ export default function AdminDashboard() {
       const maxLives = 4; // Standard max lives
       
       return {
-        id: staff.id || staff._id,
+        id: staff.id || staff._id || "",
         name: staff.name || 'Unknown Staff',
         tasksAssigned,
         lifeCount,

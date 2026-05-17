@@ -5,7 +5,7 @@ import connectDB from '@/lib/db';
 import Task from '@/models/Task';
 import Attendance from '@/models/Attendance';
 import { z } from 'zod';
-import { getISTTodayRange } from '@/lib/dateUtils';
+import { getISTTodayRange, getToday } from '@/lib/dateUtils';
 import { sendTaskAssignedEmail } from '@/lib/email';
 
 
@@ -34,8 +34,7 @@ export async function GET(request: NextRequest) {
 
     // Check attendance status for staff
     if (session.user.role === 'staff') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = getToday();
       const attendance = await Attendance.findOne({
         userId: session.user.id,
         date: today,
@@ -58,7 +57,6 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
 
@@ -73,7 +71,6 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const dateParam = searchParams.get('date'); // YYYY-MM-DD
     
-    // Handle role-based restrictions
     // Handle role-based restrictions
     if (session.user.role === 'staff') {
       query.assignedTo = session.user.id;
@@ -126,23 +123,20 @@ export async function GET(request: NextRequest) {
       endOfDay.setHours(23, 59, 59, 999);
       
       // Filter by createdAt OR scheduledFor
-      query.$and = query.$and || [];
-      (query.$and as any[]).push({
+      const dateQueryCondition = {
         $or: [
           { createdAt: { $gte: startOfDay, $lte: endOfDay } },
           { scheduledFor: { $gte: startOfDay, $lte: endOfDay } }
         ]
-      });
+      };
+      query.$and = query.$and || [];
+      (query.$and as Record<string, unknown>[]).push(dateQueryCondition);
     } else if (!showAll && !showScheduled && !showPending && !statusParam && !search) {
       // Default to today only if no other major filters are active
       const { start, end } = getISTTodayRange();
       query.createdAt = { $gte: start, $lte: end };
     }
 
-    // Filter by status if provided
-    if (status && ['todo', 'in-progress', 'stuck', 'done'].includes(status)) {
-      query.status = status;
-    }
 
     // Calculate pagination
     const skip = (page - 1) * limit;

@@ -78,13 +78,14 @@ export function AssignTaskModal({ isOpen, onClose }: AssignTaskModalProps) {
     };
 
     try {
-      const promises = formData.assignedTo.map(assignedId => 
-        fetch("/api/v1/tasks", {
+      const promises = formData.assignedTo.map(async (assignedId) => {
+        const res = await fetch("/api/v1/tasks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...payload, assignedTo: assignedId }),
-        }).then(res => res.json())
-      );
+        });
+        return res.json();
+      });
 
       const results = await Promise.all(promises);
       const failed = results.filter(r => !r.success);

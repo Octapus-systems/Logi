@@ -79,7 +79,7 @@ export function useTaskManagement(options?: UseTaskManagementOptions) {
       const result = await response.json();
       if (result.success) {
         setAllStaff(
-          result.data.map((u: any) => ({ id: u._id, name: u.name }))
+          result.data.map((u: { _id: string; name: string }) => ({ id: u._id, name: u.name }))
         );
       }
     } catch (err) {
@@ -158,10 +158,10 @@ export function useTaskManagement(options?: UseTaskManagementOptions) {
 
   // statusCounts is now state updated by API response
 
-  // Dispatch on mount, then fetch
+  // Dispatch scheduled tasks on mount, then the filter useEffect handles initial fetch
   useEffect(() => {
     fetchStaff();
-    dispatchScheduledTasks().then(() => fetchTasks());
+    dispatchScheduledTasks();
   }, []);
 
   // Re-fetch when filter or page changes
