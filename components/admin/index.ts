@@ -4,4 +4,6 @@ export { LivesManager } from './LivesManager';
 export { ReplyCard } from './ReplyCard';
 export { StaffCard } from './StaffCard';
 export { StatsCard } from './StatsCard';
+export { TaskCard } from './TaskCard';
+export { TaskFilters } from './TaskFilters';
 export { TaskTable } from './TaskTable';

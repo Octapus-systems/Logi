@@ -6,10 +6,7 @@ import Attendance from "@/models/Attendance";
 import Task from "@/models/Task";
 import User from "@/models/User";
 
-/**
- * GET /api/v1/admin/attendance/log
- * Fetch attendance log for a specific staff member and date
- */
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -34,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     const date = new Date(dateStr);
-    date.setHours(0, 0, 0, 0);
+    date.setUTCHours(0, 0, 0, 0);
 
     const nextDate = new Date(date);
     nextDate.setDate(nextDate.getDate() + 1);
@@ -63,6 +60,13 @@ export async function GET(request: NextRequest) {
       lockedAt: { $gte: date, $lt: nextDate },
     }).sort({ lockedAt: 1 }).lean();
 
+    // Fetch Pending Tasks (not done) created on the selected date
+    const pendingTasks = await Task.find({
+      assignedTo: staffId,
+      status: { $ne: "done" },
+      createdAt: { $gte: date, $lt: nextDate },
+    }).sort({ createdAt: -1 }).lean();
+
     return NextResponse.json({
       success: true,
       data: {
@@ -76,6 +80,14 @@ export async function GET(request: NextRequest) {
           completedAt: t.lockedAt || t.completedAt,
           totalTimeSpent: t.totalTimeSpent || 0,
           replies: t.replies || [],
+        })),
+        pendingTasks: pendingTasks.map(t => ({
+          id: t._id,
+          title: t.title,
+          status: t.status,
+          createdAt: t.createdAt,
+          priority: t.priority,
+          totalTimeSpent: t.totalTimeSpent || 0,
         })),
         attendanceStatus: attendance?.status || 'absent',
         checkInTime: attendance?.checkInTime,

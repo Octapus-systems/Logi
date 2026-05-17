@@ -4,18 +4,14 @@ import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
 
-/**
- * GET /api/v1/admin/attendance/staff
- * Fetch all staff members with pagination, filtering, and sorting
- */
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
+  console.log(">>> ENTERING STAFF API ROUTE");
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "admin") {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
     await connectDB();
@@ -39,29 +35,16 @@ export async function GET(request: NextRequest) {
     const sort: any = {};
     sort[sortBy] = sortOrder;
 
-    const staffMembers = await User.find(query)
-      .select("-password")
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
-
+    const staffMembers = await User.find(query).select("-password").sort(sort).skip(skip).limit(limit);
     const total = await User.countDocuments(query);
 
     return NextResponse.json({
       success: true,
       data: staffMembers,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error("Error fetching staff for attendance:", error);
-    return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
-      { status: 500 }
-    );
+    console.error("Staff API error:", error);
+    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }

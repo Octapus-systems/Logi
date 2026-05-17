@@ -9,20 +9,16 @@ import { getISTTodayRange } from '@/lib/dateUtils';
 import { sendTaskAssignedEmail } from '@/lib/email';
 
 
-/**
- * Task creation validation schema
- */
+
 const createTaskSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().min(1),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   assignedTo: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
+  scheduledFor: z.string().datetime({ offset: true }).optional().nullable(),
 });
 
-/**
- * GET /api/v1/tasks
- * Get tasks for the authenticated user (staff) or all tasks (admin)
- */
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -69,22 +65,78 @@ export async function GET(request: NextRequest) {
     // Build query based on user role
     let query: Record<string, unknown> = {};
     
-    // Default filter for today's tasks (IST)
-    // Admin can bypass this by passing all=true
+    // Check for filters
+    const showScheduled = searchParams.get('scheduled') === 'true';
+    const showPending = searchParams.get('pending') === 'true';
     const showAll = searchParams.get('all') === 'true';
-    if (!showAll) {
-      const { start, end } = getISTTodayRange();
-      query.createdAt = { $gte: start, $lte: end };
-    }
+    const priority = searchParams.get('priority');
+    const search = searchParams.get('search');
+    const dateParam = searchParams.get('date'); // YYYY-MM-DD
     
+    // Handle role-based restrictions
+    // Handle role-based restrictions
     if (session.user.role === 'staff') {
       query.assignedTo = session.user.id;
+      // Staff should NEVER see scheduled (future) tasks
+      query.isScheduled = { $ne: true };
     } else if (session.user.role === 'admin') {
-      // Admin can filter by assignedTo
       const assignedTo = searchParams.get('assignedTo');
       if (assignedTo) {
         query.assignedTo = assignedTo;
       }
+    }
+
+    // Handle special status filters
+    if (showScheduled) {
+      // Show ONLY tasks waiting to be dispatched
+      query.isScheduled = true;
+    } else if (showPending) {
+      // Pending shows all uncompleted tasks (anything not 'done')
+      // This matches the "Uncompleted Tasks" logic in the attendance module
+      query.status = { $ne: 'done' };
+      query.isScheduled = { $ne: true }; 
+    }
+
+    // Handle standard status filter
+    const statusParam = searchParams.get('status');
+    if (statusParam && ['todo', 'in-progress', 'stuck', 'done'].includes(statusParam)) {
+      query.status = statusParam;
+      // When a specific status is chosen, show both scheduled (if dispatched) and non-scheduled tasks
+      // But if they are still 'isScheduled: true', they are technically 'todo'.
+    }
+
+    // Handle Priority
+    if (priority && ['low', 'medium', 'high', 'urgent'].includes(priority)) {
+      query.priority = priority;
+    }
+
+    // Handle Search
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Handle Date Filtering
+    if (dateParam) {
+      const startOfDay = new Date(dateParam);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(dateParam);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      // Filter by createdAt OR scheduledFor
+      query.$and = query.$and || [];
+      (query.$and as any[]).push({
+        $or: [
+          { createdAt: { $gte: startOfDay, $lte: endOfDay } },
+          { scheduledFor: { $gte: startOfDay, $lte: endOfDay } }
+        ]
+      });
+    } else if (!showAll && !showScheduled && !showPending && !statusParam && !search) {
+      // Default to today only if no other major filters are active
+      const { start, end } = getISTTodayRange();
+      query.createdAt = { $gte: start, $lte: end };
     }
 
     // Filter by status if provided
@@ -116,6 +168,8 @@ export async function GET(request: NextRequest) {
       priority: task.priority,
       assignedTo: task.assignedTo,
       assignedBy: task.assignedBy,
+      scheduledFor: task.scheduledFor,
+      isScheduled: task.isScheduled,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
       startedAt: task.startedAt,
@@ -129,10 +183,31 @@ export async function GET(request: NextRequest) {
       replies: task.replies || [],
     }));
 
+    // Get counts for summary cards (ignoring the 'status' and 'pending/scheduled' filters of the current request)
+    const countQuery = { ...query };
+    delete countQuery.status;
+    delete countQuery.isScheduled;
+
+    const [pendingCount, scheduledCount, activeCount, stuckCount, doneCount] = await Promise.all([
+      Task.countDocuments({ ...countQuery, status: { $ne: 'done' }, isScheduled: { $ne: true } }),
+      Task.countDocuments({ ...countQuery, isScheduled: true }),
+      Task.countDocuments({ ...countQuery, status: 'in-progress' }),
+      Task.countDocuments({ ...countQuery, status: 'stuck' }),
+      Task.countDocuments({ ...countQuery, status: 'done' }),
+    ]);
+
     return NextResponse.json({
       success: true,
       message: 'Tasks fetched successfully',
       data: formattedTasks,
+      statusCounts: {
+        all: total,
+        pending: pendingCount,
+        scheduled: scheduledCount,
+        active: activeCount,
+        stuck: stuckCount,
+        done: doneCount,
+      },
       pagination: {
         total,
         page,
@@ -149,10 +224,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * POST /api/v1/tasks
- * Create a new task (admin only)
- */
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -190,6 +262,19 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
+    // Determine if task should be scheduled
+    const scheduledForDate = validationResult.data.scheduledFor
+      ? new Date(validationResult.data.scheduledFor)
+      : null;
+    
+    // If a future date is provided, it's scheduled. 
+    // We add a small buffer (30 seconds) to account for minor clock drift between client/server
+    const isScheduled = scheduledForDate 
+      ? scheduledForDate.getTime() > (Date.now() + 30000) 
+      : false;
+
+    console.log(`Creating task: title="${validationResult.data.title}", scheduledFor="${validationResult.data.scheduledFor}", isScheduled=${isScheduled}`);
+
     // Create task
     const task = await Task.create({
       title: validationResult.data.title,
@@ -197,6 +282,8 @@ export async function POST(request: NextRequest) {
       priority: validationResult.data.priority,
       assignedTo: validationResult.data.assignedTo,
       assignedBy: session.user.id,
+      scheduledFor: scheduledForDate,
+      isScheduled,
       status: 'todo',
       totalTimeSpent: 0,
       isTimerRunning: false,
@@ -224,9 +311,9 @@ export async function POST(request: NextRequest) {
       status: { $in: ['todo', 'in-progress', 'stuck'] }
     });
 
-    // Send email notification asynchronously
+    // Send email notification only for immediate tasks (not scheduled)
     const assignedTo = taskObj.assignedTo as any;
-    if (assignedTo && assignedTo.email) {
+    if (!isScheduled && assignedTo && assignedTo.email) {
       await sendTaskAssignedEmail(
         assignedTo.email,
         assignedTo.name || 'Staff Member',
@@ -246,6 +333,8 @@ export async function POST(request: NextRequest) {
         priority: taskObj.priority,
         assignedTo: taskObj.assignedTo,
         assignedBy: taskObj.assignedBy,
+        scheduledFor: taskObj.scheduledFor,
+        isScheduled: taskObj.isScheduled,
         createdAt: taskObj.createdAt,
         updatedAt: taskObj.updatedAt,
         totalTimeSpent: taskObj.totalTimeSpent,

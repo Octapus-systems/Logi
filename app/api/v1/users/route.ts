@@ -4,11 +4,6 @@ import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
 
-/**
- * GET /api/v1/users
- * Fetch all staff members (users with role='staff')
- * Only accessible by admin users
- */
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
