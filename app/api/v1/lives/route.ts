@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Attendance from '@/models/Attendance';
 import { getToday } from '@/lib/dateUtils';
+import { processLifeDeductions } from '@/lib/lives/deductionJob';
 
 
 function calculateMinutesUntilDeduction(
@@ -52,6 +53,13 @@ export async function GET(request: NextRequest) {
     }
 
     await connectDB();
+
+    // Process any pending life deductions on-the-fly to guarantee real-time accuracy and prevent hanging
+    try {
+      await processLifeDeductions();
+    } catch (deductErr) {
+      console.error('[Lives API] Error processing pending deductions on-the-fly:', deductErr);
+    }
 
     const today = getToday();
 

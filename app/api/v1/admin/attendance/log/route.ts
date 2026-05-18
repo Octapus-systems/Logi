@@ -5,6 +5,7 @@ import connectDB from "@/lib/db";
 import Attendance from "@/models/Attendance";
 import Task from "@/models/Task";
 import User from "@/models/User";
+import LifeHistory from "@/models/LifeHistory";
 
 
 export async function GET(request: NextRequest) {
@@ -52,8 +53,6 @@ export async function GET(request: NextRequest) {
     }).lean();
 
     // Fetch Tasks completed on this day
-    // We use lockedAt or completedAt. The prompt says "marked as done".
-    // In models/Task.ts, lockedAt is the timestamp when task was marked as Done.
     const tasks = await Task.find({
       assignedTo: staffId,
       status: "done",
@@ -66,6 +65,15 @@ export async function GET(request: NextRequest) {
       status: { $ne: "done" },
       createdAt: { $gte: date, $lt: nextDate },
     }).sort({ createdAt: -1 }).lean();
+
+    // Fetch Life History for this user on this day
+    const lifeHistory = await LifeHistory.find({
+      userId: staffId,
+      date: date,
+    })
+      .populate("adminId", "name")
+      .sort({ timestamp: 1 })
+      .lean();
 
     return NextResponse.json({
       success: true,
@@ -88,6 +96,20 @@ export async function GET(request: NextRequest) {
           createdAt: t.createdAt,
           priority: t.priority,
           totalTimeSpent: t.totalTimeSpent || 0,
+        })),
+        lifeHistory: lifeHistory.map(lh => ({
+          id: lh._id.toString(),
+          action: lh.action,
+          amount: lh.amount,
+          reason: lh.reason,
+          previousLives: lh.previousLives,
+          newLives: lh.newLives,
+          adminName: (lh.adminId as unknown as { name?: string })?.name || null,
+          timestamp: lh.timestamp,
+          lastReplyAt: lh.lastReplyAt,
+          nextReplyAt: lh.nextReplyAt,
+          delayMinutes: lh.delayMinutes,
+          expectedDurationMinutes: lh.expectedDurationMinutes,
         })),
         attendanceStatus: attendance?.status || 'absent',
         checkInTime: attendance?.checkInTime,

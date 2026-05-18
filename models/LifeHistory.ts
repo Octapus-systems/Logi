@@ -19,6 +19,10 @@ export interface ILifeHistory extends Document {
   newLives: number;
   adminId?: mongoose.Types.ObjectId;
   timestamp: Date;
+  lastReplyAt?: Date;
+  nextReplyAt?: Date;
+  delayMinutes?: number;
+  expectedDurationMinutes?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -79,6 +83,22 @@ const LifeHistorySchema = new Schema<ILifeHistory>(
     timestamp: {
       type: Date,
       default: Date.now,
+    },
+    lastReplyAt: {
+      type: Date,
+      default: null,
+    },
+    nextReplyAt: {
+      type: Date,
+      default: null,
+    },
+    delayMinutes: {
+      type: Number,
+      default: null,
+    },
+    expectedDurationMinutes: {
+      type: Number,
+      default: null,
     },
   },
   {

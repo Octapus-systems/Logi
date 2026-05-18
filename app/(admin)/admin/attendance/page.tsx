@@ -52,6 +52,21 @@ interface PendingTaskLog {
   totalTimeSpent: number;
 }
 
+interface LifeHistoryLog {
+  id: string;
+  action: 'deduct' | 'restore' | 'admin_deduct' | 'admin_restore';
+  amount: number;
+  reason: string;
+  previousLives: number;
+  newLives: number;
+  adminName: string | null;
+  timestamp: string;
+  lastReplyAt?: string;
+  nextReplyAt?: string;
+  delayMinutes?: number;
+  expectedDurationMinutes?: number;
+}
+
 interface AttendanceLog {
   staffName: string;
   date: string;
@@ -59,6 +74,7 @@ interface AttendanceLog {
   totalTasksCleared: number;
   tasks: TaskLog[];
   pendingTasks?: PendingTaskLog[];
+  lifeHistory?: LifeHistoryLog[];
   attendanceStatus: string;
   checkInTime?: string;
   checkOutTime?: string;
@@ -93,8 +109,18 @@ export default function AttendancePage() {
   const [pendingPage, setPendingPage] = useState(1);
   const [pendingSortOrder, setPendingSortOrder] = useState<"asc" | "desc">("desc");
 
-  const [taskTab, setTaskTab] = useState<"completed" | "uncompleted">("completed");
+  const [taskTab, setTaskTab] = useState<"completed" | "uncompleted" | "life_history">("completed");
   const [movingTask, setMovingTask] = useState<string | null>(null);
+
+  const [nowTime, setNowTime] = useState<Date>(new Date());
+
+  // Refresh current time every 10 seconds to keep "Ongoing" delays fresh
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowTime(new Date());
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Fetch Staff List
   useEffect(() => {
@@ -468,6 +494,22 @@ export default function AttendancePage() {
                   </span>
                 )}
               </button>
+              <button
+                onClick={() => setTaskTab("life_history")}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                  taskTab === "life_history" 
+                  ? "bg-[#161421] text-red-400 shadow-lg" 
+                  : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+                }`}
+              >
+                <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${taskTab === "life_history" ? "text-red-500 fill-red-500/20" : ""}`} />
+                Life Log
+                {logData?.lifeHistory && logData.lifeHistory.length > 0 && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] ${taskTab === "life_history" ? "bg-red-500/20 text-red-400" : "bg-white/10 text-on-surface-variant"}`}>
+                    {logData.lifeHistory.length}
+                  </span>
+                )}
+              </button>
             </div>
             
             {taskTab === "completed" ? (
@@ -490,7 +532,7 @@ export default function AttendancePage() {
                   <ArrowUpDown className={`w-4 h-4 text-on-surface-variant group-hover:text-primary transition-colors ${taskSortOrder === "asc" ? "rotate-180" : ""}`} />
                 </button>
               </div>
-            ) : (
+            ) : taskTab === "uncompleted" ? (
               <div className="flex items-center gap-2">
                 <div className="relative group">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant group-focus-within:text-yellow-500 transition-colors" />
@@ -510,14 +552,26 @@ export default function AttendancePage() {
                   <ArrowUpDown className={`w-4 h-4 text-on-surface-variant group-hover:text-yellow-500 transition-colors ${pendingSortOrder === "asc" ? "rotate-180" : ""}`} />
                 </button>
               </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-on-surface-variant font-medium">Timeline of changes</span>
+              </div>
             )}
           </div>
 
           <div className="min-h-[300px]">
             {logLoading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <div className={`w-12 h-12 border-4 rounded-full animate-spin ${taskTab === 'completed' ? 'border-primary/20 border-t-primary' : 'border-yellow-500/20 border-t-yellow-500'}`} />
-                <p className="text-sm text-on-surface-variant animate-pulse">Loading {taskTab} tasks...</p>
+                <div className={`w-12 h-12 border-4 rounded-full animate-spin ${
+                  taskTab === 'completed' 
+                    ? 'border-primary/20 border-t-primary' 
+                    : taskTab === 'uncompleted'
+                    ? 'border-yellow-500/20 border-t-yellow-500'
+                    : 'border-red-500/20 border-t-red-500'
+                }`} />
+                <p className="text-sm text-on-surface-variant animate-pulse">Loading {
+                  taskTab === 'life_history' ? 'life logs' : `${taskTab} tasks`
+                }...</p>
               </div>
             ) : taskTab === "completed" ? (
               paginatedTasks.length > 0 ? (
@@ -569,7 +623,7 @@ export default function AttendancePage() {
                   </p>
                 </div>
               )
-            ) : (
+            ) : taskTab === "uncompleted" ? (
               paginatedPendingTasks.length > 0 ? (
                 <div className="divide-y divide-white/5 animate-in fade-in duration-300">
                   {paginatedPendingTasks.map((task) => (
@@ -631,6 +685,203 @@ export default function AttendancePage() {
                   </p>
                 </div>
               )
+            ) : (
+              logData?.lifeHistory && logData.lifeHistory.length > 0 ? (
+                <div className="p-6 space-y-6 animate-in fade-in duration-300">
+                  <div className="relative border-l border-white/10 pl-6 ml-4 space-y-8">
+                    {[...(logData.lifeHistory || [])]
+                      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                      .map((lh) => {
+                        const isDeduction = lh.action === 'deduct' || lh.action === 'admin_deduct';
+                        const isRestore = lh.action === 'restore' || lh.action === 'admin_restore';
+                        const isManual = lh.action === 'admin_deduct' || lh.action === 'admin_restore';
+
+                        // Determine visual badge and dot style
+                        let badgeLabel = "";
+                        let badgeClass = "";
+                        let dotClass = "";
+
+                        if (lh.action === 'deduct') {
+                          if (lh.nextReplyAt) {
+                            badgeLabel = "Resolved";
+                            badgeClass = "bg-green-500/10 text-green-400 border border-green-500/20";
+                            dotClass = "bg-green-500/10 border-green-500/30 text-green-400 group-hover:bg-green-500/20 animate-in fade-in duration-300";
+                          } else {
+                            badgeLabel = "Ongoing";
+                            badgeClass = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+                            dotClass = "bg-amber-500/10 border-amber-500/30 text-amber-400 group-hover:bg-amber-500/20 animate-pulse";
+                          }
+                        } else if (lh.action === 'admin_deduct') {
+                          badgeLabel = "Admin Action";
+                          badgeClass = "bg-red-500/10 text-red-400 border border-red-500/20";
+                          dotClass = "bg-red-500/10 border-red-500/30 text-red-400 group-hover:bg-red-500/20";
+                        } else if (lh.action === 'restore') {
+                          badgeLabel = "Check-in Reset";
+                          badgeClass = "bg-blue-500/10 text-blue-400 border border-blue-500/20";
+                          dotClass = "bg-blue-500/10 border-blue-500/30 text-blue-400 group-hover:bg-blue-500/20";
+                        } else if (lh.action === 'admin_restore') {
+                          badgeLabel = "Admin Restored";
+                          badgeClass = "bg-purple-500/10 text-purple-400 border border-purple-500/20";
+                          dotClass = "bg-purple-500/10 border-purple-500/30 text-purple-400 group-hover:bg-purple-500/20";
+                        }
+
+                        return (
+                          <div key={lh.id} className="relative group text-left">
+                            {/* Timeline dot */}
+                            <div className={`absolute -left-[35px] top-1.5 w-6 h-6 rounded-full border flex items-center justify-center transition-all duration-300 shadow-md ${dotClass}`}>
+                              <Heart className={`w-3.5 h-3.5 ${isRestore ? 'fill-green-500/10' : 'fill-red-500/10'}`} />
+                            </div>
+
+                            {/* Log content */}
+                            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 hover:bg-white/[0.04] hover:border-white/10 transition-all duration-300 shadow-sm">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border ${badgeClass}`}>
+                                    {badgeLabel}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-on-surface-variant flex items-center gap-1.5 font-medium">
+                                  <Clock className="w-3.5 h-3.5 text-primary" />
+                                  {format(new Date(lh.timestamp), "hh:mm a")}
+                                </span>
+                              </div>
+
+                              <div className="space-y-3">
+                                {/* Main Explanation text */}
+                                {lh.action === 'deduct' ? (
+                                  <p className="text-sm font-semibold text-on-surface text-left">
+                                    0.5 life deducted — No activity for 30 minutes
+                                  </p>
+                                ) : lh.action === 'admin_deduct' ? (
+                                  <p className="text-sm font-semibold text-on-surface text-left">
+                                    {lh.amount} life(s) deducted by admin
+                                  </p>
+                                ) : (lh.action === 'restore' || lh.action === 'admin_restore') ? (
+                                  <p className="text-sm font-semibold text-on-surface text-left">
+                                    {lh.amount} life(s) restored — {lh.action === 'restore' ? 'Check-in Reset' : 'Admin Action'}
+                                  </p>
+                                ) : null}
+
+                                {/* Details / reasoning block */}
+                                {lh.action === 'deduct' && (
+                                  <div className="bg-[#110f1c] border border-white/5 rounded-xl p-4 space-y-3 mt-2 text-left">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                                      <div>
+                                        <p className="text-outline-variant mb-0.5">Inactivity Started At:</p>
+                                        <p className="font-semibold text-on-surface">
+                                          {lh.lastReplyAt 
+                                            ? format(new Date(lh.lastReplyAt), "hh:mm a") 
+                                            : 'N/A'
+                                          }
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <p className="text-outline-variant mb-0.5">Life Deducted At:</p>
+                                        <p className="font-semibold text-on-surface">
+                                          {format(new Date(lh.timestamp), "hh:mm a")}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <p className="text-outline-variant mb-0.5">Staff Replied After Deduction:</p>
+                                        <p className="font-semibold text-on-surface">
+                                          {lh.nextReplyAt 
+                                            ? format(new Date(lh.nextReplyAt), "hh:mm a") 
+                                            : <span className="text-amber-400 font-semibold animate-pulse">Ongoing</span>
+                                          }
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <p className="text-outline-variant mb-0.5">Expected Activity Window:</p>
+                                        <p className="font-semibold text-on-surface">
+                                          {lh.expectedDurationMinutes || 30} minutes
+                                        </p>
+                                      </div>
+                                      <div className="sm:col-span-2">
+                                        <p className="text-outline-variant mb-0.5">Total Delay Duration:</p>
+                                        <p className="font-semibold text-on-surface">
+                                          {lh.delayMinutes !== null && lh.delayMinutes !== undefined ? (
+                                            <span className="text-green-400">Delayed by {lh.delayMinutes} minutes ({lh.delayMinutes} mins)</span>
+                                          ) : (
+                                            <span className="text-amber-400 font-semibold animate-pulse">
+                                              Ongoing — {Math.max(0, Math.floor((nowTime.getTime() - new Date(lh.lastReplyAt || lh.timestamp).getTime()) / 60000))} mins so far
+                                            </span>
+                                          )}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {lh.action === 'admin_deduct' && (
+                                  <div className="bg-[#110f1c] border border-white/5 rounded-xl p-4 space-y-3 mt-2 text-left">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                      <div>
+                                        <p className="text-outline-variant mb-0.5">Admin Who Actioned:</p>
+                                        <p className="font-semibold text-on-surface">{lh.adminName || 'Admin'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-outline-variant mb-0.5">Time of Action:</p>
+                                        <p className="font-semibold text-on-surface">
+                                          {format(new Date(lh.timestamp), "hh:mm a")}
+                                        </p>
+                                      </div>
+                                      <div className="sm:col-span-2">
+                                        <p className="text-outline-variant mb-1 font-semibold uppercase tracking-wider">Reason entered by Admin:</p>
+                                        <p className="text-sm font-medium text-on-surface bg-white/5 border border-white/5 p-3 rounded-lg">{lh.reason}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {(lh.action === 'restore' || lh.action === 'admin_restore') && (
+                                  <div className="bg-[#110f1c] border border-white/5 rounded-xl p-4 space-y-3 mt-2 text-left">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                      {lh.action === 'admin_restore' && lh.adminName && (
+                                        <div>
+                                          <p className="text-outline-variant mb-0.5">Admin Who Restored:</p>
+                                          <p className="font-semibold text-on-surface">{lh.adminName}</p>
+                                        </div>
+                                      )}
+                                      <div>
+                                        <p className="text-outline-variant mb-0.5">Time of Action:</p>
+                                        <p className="font-semibold text-on-surface">
+                                          {format(new Date(lh.timestamp), "hh:mm a")}
+                                        </p>
+                                      </div>
+                                      <div className="sm:col-span-2">
+                                        <p className="text-outline-variant mb-1 font-semibold uppercase tracking-wider">Reason:</p>
+                                        <p className="text-sm font-medium text-on-surface bg-white/5 border border-white/5 p-3 rounded-lg">{lh.reason}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* State change overview */}
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-outline pt-2 justify-start border-t border-white/5 mt-2">
+                                  <span>Previous: <span className="font-bold text-on-surface">{lh.previousLives.toFixed(1)}</span></span>
+                                  <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+                                  <span>New: <span className="font-bold text-primary">{lh.newLives.toFixed(1)}</span></span>
+                                  <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+                                  <span>Change: <span className={`font-bold ${isDeduction ? 'text-red-400' : 'text-green-400'}`}>{isDeduction ? '-' : '+'}{lh.amount}</span></span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 text-center px-6 animate-in fade-in duration-300">
+                  <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 text-on-surface-variant">
+                    <Heart className="w-8 h-8 opacity-20 text-red-500" />
+                  </div>
+                  <h3 className="text-lg font-bold text-on-surface mb-1">No life changes recorded</h3>
+                  <p className="text-sm text-on-surface-variant max-w-xs">
+                    No automatic or manual life deductions/restorations have been recorded for this staff member today.
+                  </p>
+                </div>
+              )
             )}
           </div>
 
@@ -662,7 +913,7 @@ export default function AttendancePage() {
                 </div>
               </div>
             )
-          ) : (
+          ) : taskTab === "uncompleted" ? (
             totalPendingPages > 1 && (
               <div className="p-4 border-t border-white/5 flex items-center justify-between">
                 <span className="text-xs text-on-surface-variant">
@@ -689,7 +940,7 @@ export default function AttendancePage() {
                 </div>
               </div>
             )
-          )}
+          ) : null}
         </div>
 
         {/* Task Detail Modal */}
