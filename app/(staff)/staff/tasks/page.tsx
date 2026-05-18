@@ -26,15 +26,22 @@ export default function StaffTasksPage() {
   } = useTasks();
 
   const [activeTab, setActiveTab] = useState<"pending" | "completed">("pending");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [completedPage, setCompletedPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
 
-  // Fetch all tasks
-  const loadTasks = useCallback(async (page: number) => {
+  // Fetch tasks
+  const loadTasks = useCallback(async (tab: "pending" | "completed", page: number) => {
     setIsRefreshing(true);
-    await fetchTasks(page, 20, undefined, true);
+    if (tab === "pending") {
+      // past=true, pending=true
+      await fetchTasks(page, 10, undefined, false, true, true);
+    } else {
+      // past=true, status="done"
+      await fetchTasks(page, 10, "done", false, true, false);
+    }
     setIsRefreshing(false);
   }, [fetchTasks]);
 
@@ -51,9 +58,12 @@ export default function StaffTasksPage() {
   }, []);
 
   useEffect(() => {
-    loadTasks(currentPage);
+    loadTasks(activeTab, activeTab === "pending" ? pendingPage : completedPage);
+  }, [activeTab, pendingPage, completedPage, loadTasks]);
+
+  useEffect(() => {
     loadAttendanceHistory();
-  }, [currentPage, loadTasks, loadAttendanceHistory]);
+  }, [loadAttendanceHistory]);
 
   const handleMoveToToday = async (taskId: string) => {
     try {
@@ -114,11 +124,16 @@ export default function StaffTasksPage() {
   }, [pastCompletedTasks, attendanceHistory]);
 
   const renderPagination = () => {
-    if (pagination.totalPages <= 1) return null;
+    // Show pagination even if there's only 1 page, so the user can see it exists
+    if (!pagination || pagination.totalPages === 0) return null;
+
+    const currentPage = activeTab === "pending" ? pendingPage : completedPage;
+    const setPage = activeTab === "pending" ? setPendingPage : setCompletedPage;
+
     return (
       <div className="flex justify-center gap-2 mt-8">
         <button
-          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          onClick={() => setPage(p => Math.max(1, p - 1))}
           disabled={currentPage === 1 || loading}
           className="px-4 py-2 rounded-lg border border-white/10 text-on-surface hover:bg-white/5 disabled:opacity-50 transition-colors"
         >
@@ -128,7 +143,7 @@ export default function StaffTasksPage() {
           Page {currentPage} of {pagination.totalPages}
         </span>
         <button
-          onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
+          onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
           disabled={currentPage === pagination.totalPages || loading}
           className="px-4 py-2 rounded-lg border border-white/10 text-on-surface hover:bg-white/5 disabled:opacity-50 transition-colors"
         >
@@ -189,7 +204,7 @@ export default function StaffTasksPage() {
               : "border-transparent text-outline hover:text-on-surface"
           }`}
         >
-          Pending Tasks ({pastPendingTasks.length})
+          Pending Tasks {activeTab === "pending" && `(${pagination.total})`}
         </button>
         <button
           onClick={() => setActiveTab("completed")}

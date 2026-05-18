@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 
 /**
  * Task interface matching API response
@@ -53,7 +53,7 @@ export function useTasks() {
   /**
    * Fetch tasks from API
    */
-  const fetchTasks = useCallback(async (page = 1, limit = 10, status?: string, all?: boolean) => {
+  const fetchTasks = useCallback(async (page = 1, limit = 10, status?: string, all?: boolean, past?: boolean, pending?: boolean) => {
     try {
       setLoading(true);
       setError(null);
@@ -61,6 +61,8 @@ export function useTasks() {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (status) params.append("status", status);
       if (all) params.append("all", "true");
+      if (past) params.append("past", "true");
+      if (pending) params.append("pending", "true");
 
       const response = await fetch(`/api/v1/tasks?${params.toString()}`);
       const data = await response.json();
