@@ -7,8 +7,14 @@
  * All attendance/lives queries use this as the canonical "today" boundary.
  */
 export function getToday(): Date {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+  const now = new Date();
+  // IST offset is 5.5 hours
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  // Get current time in IST
+  const istTime = new Date(now.getTime() + istOffset);
+  
+  // Create a UTC date that represents the same YYYY-MM-DD as the IST date
+  const today = new Date(Date.UTC(istTime.getUTCFullYear(), istTime.getUTCMonth(), istTime.getUTCDate(), 0, 0, 0, 0));
   return today;
 }
 

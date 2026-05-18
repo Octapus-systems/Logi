@@ -86,12 +86,14 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      const minutesUntilDeduction = calculateMinutesUntilDeduction(
-        attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
-        attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null,
-        attendance.checkInTime ? new Date(attendance.checkInTime) : null,
-        attendance.createdAt ? new Date(attendance.createdAt) : null
-      );
+      const minutesUntilDeduction = attendance.isOnBreak
+        ? (attendance.remainingCountdownSeconds || 0) / 60
+        : calculateMinutesUntilDeduction(
+            attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
+            attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null,
+            attendance.checkInTime ? new Date(attendance.checkInTime) : null,
+            attendance.createdAt ? new Date(attendance.createdAt) : null
+          );
 
       const nextDeductionAt = minutesUntilDeduction !== null
         ? new Date(Date.now() + minutesUntilDeduction * 60 * 1000).toISOString()
@@ -127,12 +129,14 @@ export async function GET(request: NextRequest) {
 
       const formattedStaff = checkedInStaff.map((attendance) => {
         const user = attendance.userId as unknown as { name: string; email: string; _id: string };
-        const minutesUntilDeduction = calculateMinutesUntilDeduction(
-          attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
-          attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null,
-          attendance.checkInTime ? new Date(attendance.checkInTime) : null,
-          attendance.createdAt ? new Date(attendance.createdAt) : null
-        );
+        const minutesUntilDeduction = attendance.isOnBreak
+          ? (attendance.remainingCountdownSeconds || 0) / 60
+          : calculateMinutesUntilDeduction(
+              attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
+              attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null,
+              attendance.checkInTime ? new Date(attendance.checkInTime) : null,
+              attendance.createdAt ? new Date(attendance.createdAt) : null
+            );
 
         return {
           userId: user._id.toString(),

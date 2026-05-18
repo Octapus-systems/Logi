@@ -6,6 +6,7 @@ import Attendance from "@/models/Attendance";
 import Task from "@/models/Task";
 import User from "@/models/User";
 import LifeHistory from "@/models/LifeHistory";
+import { performAutoCheckout } from "@/lib/lives/dailyResetJob";
 
 
 export async function GET(request: NextRequest) {
@@ -19,6 +20,13 @@ export async function GET(request: NextRequest) {
     }
 
     await connectDB();
+
+    // Run auto checkout before querying logs to ensure accurate historical data
+    try {
+      await performAutoCheckout();
+    } catch (err) {
+      console.error('[Admin Attendance Log] Error running auto checkout:', err);
+    }
 
     const { searchParams } = new URL(request.url);
     const staffId = searchParams.get("staffId");

@@ -159,6 +159,7 @@ export default function StaffDashboard() {
                   onAddReply={handleAddReply}
                   onStatusChange={handleStatusChange}
                   loading={loading}
+                  isOnBreak={attendance?.isOnBreak || false}
                 />
               ))}
             </div>
