@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useAttendance } from "@/hooks/useAttendance";
-import { useLives } from "@/hooks/useLives";
 import { Coffee, LogOut, LogIn, AlertCircle, Play, Square, Lock } from "lucide-react";
 
 interface CheckInButtonProps {
@@ -13,7 +12,6 @@ interface CheckInButtonProps {
  */
 export function CheckInButton({ onStatusChange, doneTaskCount = 0 }: CheckInButtonProps) {
   const { attendance, loading, error: attendanceError, isCheckedIn, isOnBreak, checkIn, checkOut, startBreak, endBreak } = useAttendance();
-  const { minutesUntilDeduction } = useLives();
   const [breakError, setBreakError] = useState<string | null>(null);
   const [showBlockedTooltip, setShowBlockedTooltip] = useState(false);
 
@@ -58,9 +56,8 @@ export function CheckInButton({ onStatusChange, doneTaskCount = 0 }: CheckInButt
           return;
         }
         
-        // Pass remaining countdown seconds to resume from same point
-        const remainingSeconds = minutesUntilDeduction ? Math.ceil(minutesUntilDeduction * 60) : 1800;
-        await startBreak(remainingSeconds);
+        // Call startBreak on hook; backend calculates remaining time automatically
+        await startBreak();
       }
     } catch (err) {
       if (err instanceof Error && err.message.includes("complete at least 1 task")) {

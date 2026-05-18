@@ -1,6 +1,8 @@
+import mongoose from 'mongoose';
 import Attendance from '@/models/Attendance';
 import LifeHistory from '@/models/LifeHistory';
 import { getToday, getResetLivesValue } from './utils';
+import { performAutoCheckout } from './dailyResetJob';
 
 /**
  * Check if 30 minutes have passed since reference time
@@ -68,6 +70,13 @@ export async function processLifeDeductions(): Promise<{
   };
 
   try {
+    // 1. Run automatic checkout for previous days' checked-in staff first!
+    try {
+      await performAutoCheckout();
+    } catch (err) {
+      console.error('[DeductionJob] Error during automatic checkout:', err);
+    }
+
     const today = getToday();
 
     // Find all checked-in staff with lives remaining
@@ -125,10 +134,12 @@ export async function processLifeDeductions(): Promise<{
           date: today,
           action: 'deduct',
           amount: 0.5,
-          reason: 'Inactivity for 30 minutes',
+          reason: '0.5 life reduced because no reply was received within 30 minutes.',
           previousLives,
           newLives,
           timestamp: new Date(),
+          lastReplyAt: referenceTime,
+          expectedDurationMinutes: 30,
         });
 
         result.deducted++;
@@ -157,14 +168,15 @@ export async function processLifeDeductions(): Promise<{
  * This should be called whenever a staff member does any task activity:
  * - Adding a reply to a task
  * - Changing task status to 'done'
- * - Starting/Stopping a task timer
+ * Note: Starting/Stopping a task timer DOES NOT reset the activity timer to prevent loopholes.
  */
 export async function resetActivityTimer(userId: string): Promise<boolean> {
   try {
     const today = getToday();
+    const userObjectId = typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId;
 
     const attendance = await Attendance.findOne({
-      userId,
+      userId: userObjectId,
       date: today,
       status: 'checked-in',
     });
@@ -174,11 +186,35 @@ export async function resetActivityTimer(userId: string): Promise<boolean> {
       return false;
     }
 
+    const now = new Date();
+    const oldLastReplyAt = attendance.lastReplyAt;
+
     // Update last reply timestamp (used as reference for inactivity)
-    attendance.lastReplyAt = new Date();
+    attendance.lastReplyAt = now;
     await attendance.save();
 
-    console.log(`[DeductionJob] Reset activity timer for user ${userId}`);
+    // Find any pending automatic life deduction logs for this user today and complete them
+    const pendingLogs = await LifeHistory.find({
+      userId: userObjectId,
+      date: today,
+      action: 'deduct',
+      $or: [
+        { nextReplyAt: null },
+        { nextReplyAt: { $exists: false } }
+      ]
+    });
+
+    for (const log of pendingLogs) {
+      const lastReplyTime = log.lastReplyAt || oldLastReplyAt || log.createdAt;
+      const delayMs = now.getTime() - new Date(lastReplyTime).getTime();
+      const delayMinutes = Math.round(delayMs / (60 * 1000));
+
+      log.nextReplyAt = now;
+      log.delayMinutes = delayMinutes;
+      await log.save();
+    }
+
+    console.log(`[DeductionJob] Reset activity timer and updated ${pendingLogs.length} pending life logs for user ${userId}`);
     return true;
   } catch (error) {
     console.error(`[DeductionJob] Error resetting activity timer for user ${userId}:`, error);
@@ -192,9 +228,10 @@ export async function resetActivityTimer(userId: string): Promise<boolean> {
 export async function initializeLivesOnCheckIn(userId: string): Promise<boolean> {
   try {
     const today = getToday();
+    const userObjectId = typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId;
 
     let attendance = await Attendance.findOne({
-      userId,
+      userId: userObjectId,
       date: today,
     });
 
@@ -216,7 +253,7 @@ export async function initializeLivesOnCheckIn(userId: string): Promise<boolean>
     } else {
       // Create new attendance record with full lives
       attendance = await Attendance.create({
-        userId,
+        userId: userObjectId,
         date: today,
         status: 'checked-in',
         checkInTime: now,
@@ -231,7 +268,7 @@ export async function initializeLivesOnCheckIn(userId: string): Promise<boolean>
 
     // Record the initialization in history (optional - for audit)
     await LifeHistory.create({
-      userId,
+      userId: userObjectId,
       attendanceId: attendance._id,
       date: today,
       action: 'restore',

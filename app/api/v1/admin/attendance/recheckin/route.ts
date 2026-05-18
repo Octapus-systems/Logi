@@ -73,7 +73,12 @@ export async function POST(request: NextRequest) {
     if (attendance.remainingCountdownSeconds > 0) {
       const thirtyMinutesInMs = 30 * 60 * 1000;
       const elapsedMs = Math.max(0, thirtyMinutesInMs - (attendance.remainingCountdownSeconds * 1000));
-      attendance.lastReplyAt = new Date(Date.now() - elapsedMs);
+      const targetTime = new Date(Date.now() - elapsedMs);
+      attendance.lastReplyAt = targetTime;
+      attendance.lastDeductionAt = undefined; // clear last deduction to ensure lastReplyAt is the latest reference
+      if (attendance.checkInTime && attendance.checkInTime > targetTime) {
+        attendance.checkInTime = targetTime;
+      }
       // Reset remainingCountdownSeconds as it's now incorporated into lastReplyAt
       attendance.remainingCountdownSeconds = 0;
     }

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Attendance from '@/models/Attendance';
 import Task from '@/models/Task';
 import { initializeLivesOnCheckIn } from '@/lib/lives/deductionJob';
+import { performAutoCheckout } from '@/lib/lives/dailyResetJob';
 import { sendCheckInEmail, sendCheckOutEmail } from '@/lib/email';
 import { z } from 'zod';
 import { getToday } from '@/lib/dateUtils';
@@ -26,6 +28,13 @@ export async function GET(request: NextRequest) {
     }
 
     await connectDB();
+
+    // Run auto checkout to finalize any old check-ins
+    try {
+      await performAutoCheckout();
+    } catch (err) {
+      console.error('[Attendance API GET] Error running auto checkout:', err);
+    }
 
     const today = getToday();
 
@@ -95,6 +104,13 @@ export async function POST(request: NextRequest) {
     }
 
     await connectDB();
+
+    // Run auto checkout before checking in, just in case
+    try {
+      await performAutoCheckout();
+    } catch (err) {
+      console.error('[Attendance API POST] Error running auto checkout:', err);
+    }
 
     const today = getToday();
     const existingAttendance = await Attendance.findOne({
@@ -228,10 +244,49 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    // Stop all running task timers for this user on checkout
+    const runningTasks = await Task.find({
+      assignedTo: session.user.id,
+      isTimerRunning: true,
+    });
+
+    for (const runningTask of runningTasks) {
+      if (runningTask.timerStartedAt) {
+        const sessionSeconds = Math.floor((now.getTime() - runningTask.timerStartedAt.getTime()) / 1000);
+        runningTask.isTimerRunning = false;
+        runningTask.totalTimeSpent += sessionSeconds;
+        runningTask.timerStartedAt = undefined;
+        await runningTask.save();
+        console.log(`[Checkout] Stopped task timer for ${runningTask._id}`);
+      }
+    }
+
     // Update existing record - proceed with checkout
     attendance.status = 'checked-out';
     attendance.checkOutTime = now;
     attendance = await attendance.save();
+
+    // Close any pending LifeHistory logs (stops "Ongoing" in UI)
+    const pendingLogs = await mongoose.model('LifeHistory').find({
+      userId: session.user.id,
+      date: today,
+      action: 'deduct',
+      $or: [
+        { nextReplyAt: null },
+        { nextReplyAt: { $exists: false } }
+      ]
+    });
+
+    for (const log of pendingLogs) {
+      const lastReplyTime = log.lastReplyAt || log.timestamp || attendance.createdAt;
+      let delayMs = now.getTime() - new Date(lastReplyTime).getTime();
+      if (delayMs < 0) delayMs = 0;
+      const delayMinutes = Math.round(delayMs / (60 * 1000));
+
+      log.nextReplyAt = now;
+      log.delayMinutes = delayMinutes;
+      await log.save();
+    }
 
     // Send check-out email
     await sendCheckOutEmail(
@@ -337,11 +392,40 @@ export async function PUT(request: NextRequest) {
         );
       }
 
+      // Stop all running task timers for this user on break start
+      const runningTasks = await Task.find({
+        assignedTo: session.user.id,
+        isTimerRunning: true,
+      });
+
+      for (const runningTask of runningTasks) {
+        if (runningTask.timerStartedAt) {
+          const sessionSeconds = Math.floor((now.getTime() - runningTask.timerStartedAt.getTime()) / 1000);
+          runningTask.isTimerRunning = false;
+          runningTask.totalTimeSpent += sessionSeconds;
+          runningTask.timerStartedAt = undefined;
+          await runningTask.save();
+          console.log(`[Break Start] Stopped task timer for ${runningTask._id}`);
+        }
+      }
+
+      // Calculate remaining countdown seconds on backend dynamically
+      const referenceTime = attendance.lastReplyAt || attendance.lastDeductionAt || attendance.checkInTime || attendance.createdAt;
+      let calculatedRemainingSeconds = 1800;
+      if (referenceTime) {
+        const thirtyMinutesInMs = 30 * 60 * 1000;
+        const elapsedMs = now.getTime() - new Date(referenceTime).getTime();
+        const remainingMs = Math.max(0, thirtyMinutesInMs - elapsedMs);
+        calculatedRemainingSeconds = Math.floor(remainingMs / 1000);
+      }
+
       attendance.isOnBreak = true;
       attendance.currentBreakStart = now;
-      // Store remaining seconds for countdown resumption
-      if (remainingSeconds !== undefined) {
+      // Store remaining seconds for countdown resumption (fallback to calculated seconds if frontend sends default or undefined)
+      if (remainingSeconds !== undefined && remainingSeconds < 1800) {
         attendance.remainingCountdownSeconds = remainingSeconds;
+      } else {
+        attendance.remainingCountdownSeconds = calculatedRemainingSeconds;
       }
 
       await attendance.save();
@@ -371,6 +455,16 @@ export async function PUT(request: NextRequest) {
         });
       }
 
+      // Shift lastReplyAt to resume the timer from where it was paused
+      const remainingSecondsVal = attendance.remainingCountdownSeconds || 1800;
+      const targetReferenceTime = new Date(now.getTime() - (30 * 60 * 1000 - remainingSecondsVal * 1000));
+      
+      attendance.lastReplyAt = targetReferenceTime;
+      attendance.lastDeductionAt = undefined; // clear last deduction to ensure lastReplyAt is the latest reference
+      if (attendance.checkInTime && attendance.checkInTime > targetReferenceTime) {
+        attendance.checkInTime = targetReferenceTime;
+      }
+
       attendance.isOnBreak = false;
       attendance.currentBreakStart = undefined;
       attendance.remainingCountdownSeconds = 0;
@@ -383,7 +477,7 @@ export async function PUT(request: NextRequest) {
         data: {
           isOnBreak: false,
           breakEndTime: now.toISOString(),
-          remainingCountdownSeconds: remainingSeconds || 0,
+          remainingCountdownSeconds: remainingSecondsVal,
         },
       });
     }

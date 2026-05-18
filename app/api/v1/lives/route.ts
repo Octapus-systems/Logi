@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Attendance from '@/models/Attendance';
 import { getToday } from '@/lib/dateUtils';
+import { processLifeDeductions } from '@/lib/lives/deductionJob';
 
 
 function calculateMinutesUntilDeduction(
@@ -53,6 +54,13 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
+    // Process any pending life deductions on-the-fly to guarantee real-time accuracy and prevent hanging
+    try {
+      await processLifeDeductions();
+    } catch (deductErr) {
+      console.error('[Lives API] Error processing pending deductions on-the-fly:', deductErr);
+    }
+
     const today = getToday();
 
     // Staff view: return own lives status
@@ -78,12 +86,14 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      const minutesUntilDeduction = calculateMinutesUntilDeduction(
-        attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
-        attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null,
-        attendance.checkInTime ? new Date(attendance.checkInTime) : null,
-        attendance.createdAt ? new Date(attendance.createdAt) : null
-      );
+      const minutesUntilDeduction = attendance.isOnBreak
+        ? (attendance.remainingCountdownSeconds || 0) / 60
+        : calculateMinutesUntilDeduction(
+            attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
+            attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null,
+            attendance.checkInTime ? new Date(attendance.checkInTime) : null,
+            attendance.createdAt ? new Date(attendance.createdAt) : null
+          );
 
       const nextDeductionAt = minutesUntilDeduction !== null
         ? new Date(Date.now() + minutesUntilDeduction * 60 * 1000).toISOString()
@@ -119,12 +129,14 @@ export async function GET(request: NextRequest) {
 
       const formattedStaff = checkedInStaff.map((attendance) => {
         const user = attendance.userId as unknown as { name: string; email: string; _id: string };
-        const minutesUntilDeduction = calculateMinutesUntilDeduction(
-          attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
-          attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null,
-          attendance.checkInTime ? new Date(attendance.checkInTime) : null,
-          attendance.createdAt ? new Date(attendance.createdAt) : null
-        );
+        const minutesUntilDeduction = attendance.isOnBreak
+          ? (attendance.remainingCountdownSeconds || 0) / 60
+          : calculateMinutesUntilDeduction(
+              attendance.lastReplyAt ? new Date(attendance.lastReplyAt) : null,
+              attendance.lastDeductionAt ? new Date(attendance.lastDeductionAt) : null,
+              attendance.checkInTime ? new Date(attendance.checkInTime) : null,
+              attendance.createdAt ? new Date(attendance.createdAt) : null
+            );
 
         return {
           userId: user._id.toString(),
