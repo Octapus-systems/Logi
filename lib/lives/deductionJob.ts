@@ -84,6 +84,7 @@ export async function processLifeDeductions(): Promise<{
       date: today,
       status: 'checked-in',
       lives: { $gt: 0 },
+      isOnBreak: { $ne: true },
     });
 
     result.processed = checkedInStaff.length;

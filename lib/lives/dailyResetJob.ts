@@ -41,6 +41,12 @@ export async function performAutoCheckout(): Promise<{
         
         while (referenceTime && record.lives > 0) {
           const nextDeductionTime = new Date(new Date(referenceTime).getTime() + 30 * 60 * 1000);
+          
+          // Stop deductions if we reached the break start time (since they are/were on break)
+          if (record.isOnBreak && record.currentBreakStart && nextDeductionTime > record.currentBreakStart) {
+            break;
+          }
+
           if (nextDeductionTime <= autoCheckoutTime) {
             // Deduct 0.5 life
             const previousLives = record.lives;

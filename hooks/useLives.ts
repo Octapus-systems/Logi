@@ -159,11 +159,13 @@ export function useLives() {
    */
   const formatCountdown = useCallback((minutes: number | null): string => {
     if (minutes === null) return "--:--";
-    if (minutes <= 0) return "DEDUCTING...";
+    if (minutes <= 0) {
+      return livesStatus?.isOnBreak ? "00:00" : "DEDUCTING...";
+    }
     const mins = Math.floor(minutes);
     const secs = Math.floor((minutes % 1) * 60);
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  }, []);
+  }, [livesStatus?.isOnBreak]);
 
   /**
    * Auto-refresh lives status when checked in
