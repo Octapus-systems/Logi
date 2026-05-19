@@ -9,6 +9,7 @@ interface TaskCardProps {
   onAddReply?: (taskId: string, content: string) => void;
   onStatusChange?: (taskId: string, status: Task["status"]) => void;
   loading?: boolean;
+  isOnBreak?: boolean;
 }
 
 /**
@@ -75,7 +76,7 @@ const STATUS_OPTIONS: { value: Task["status"]; label: string }[] = [
   { value: "done", label: "Done" },
 ];
 
-export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, loading = false }: TaskCardProps) {
+export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, loading = false, isOnBreak = false }: TaskCardProps) {
   const [statusUpdate, setStatusUpdate] = useState("");
   const [displayTime, setDisplayTime] = useState(task.timeElapsed);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
@@ -137,9 +138,9 @@ export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, load
             {/* Status Dropdown - Disabled for Done tasks */}
             <div className="relative">
               <button
-                onClick={() => task.status !== "done" && setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                disabled={loading || !onStatusChange || task.status === "done"}
-                className={`text-caps-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all hover:opacity-80 disabled:opacity-50 ${statusBadge.className} ${task.status === "done" ? "cursor-not-allowed" : ""}`}
+                onClick={() => task.status !== "done" && !isOnBreak && setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                disabled={loading || !onStatusChange || task.status === "done" || isOnBreak}
+                className={`text-caps-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all hover:opacity-80 disabled:opacity-50 ${statusBadge.className} ${task.status === "done" || isOnBreak ? "cursor-not-allowed" : ""}`}
               >
                 {statusBadge.text}
                 {task.status === "done" ? (
@@ -201,7 +202,7 @@ export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, load
             </span>
             <button
               onClick={() => onToggleTimer(task.id)}
-              disabled={loading || task.status === "done"}
+              disabled={loading || task.status === "done" || isOnBreak}
               className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed ml-auto ${
                 task.isTimerRunning
                   ? "bg-red-500/20 text-red-400 border border-red-500/50"
@@ -251,15 +252,15 @@ export function TaskCard({ task, onToggleTimer, onAddReply, onStatusChange, load
               type="text"
               value={statusUpdate}
               onChange={(e) => setStatusUpdate(e.target.value)}
-              placeholder="Add a status update..."
-              disabled={loading}
+              placeholder={isOnBreak ? "Updates disabled while on break" : "Add a status update..."}
+              disabled={loading || isOnBreak}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-6 py-3 text-body-md text-on-surface focus:border-primary-container focus:ring-0 placeholder:text-outline transition-colors outline-none disabled:opacity-50"
               onKeyDown={(e) => e.key === "Enter" && handleReply()}
             />
           </div>
           <button
             onClick={handleReply}
-            disabled={loading || !statusUpdate.trim() || !onAddReply}
+            disabled={loading || !statusUpdate.trim() || !onAddReply || isOnBreak}
             className="px-6 rounded-xl bg-surface-container-high border border-white/10 text-on-surface hover:bg-white/10 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Attendance from '@/models/Attendance';
 import LifeHistory from '@/models/LifeHistory';
 import { getToday, getResetLivesValue } from './utils';
+import { performAutoCheckout } from './dailyResetJob';
 
 /**
  * Check if 30 minutes have passed since reference time
@@ -69,6 +70,13 @@ export async function processLifeDeductions(): Promise<{
   };
 
   try {
+    // 1. Run automatic checkout for previous days' checked-in staff first!
+    try {
+      await performAutoCheckout();
+    } catch (err) {
+      console.error('[DeductionJob] Error during automatic checkout:', err);
+    }
+
     const today = getToday();
 
     // Find all checked-in staff with lives remaining
@@ -76,6 +84,7 @@ export async function processLifeDeductions(): Promise<{
       date: today,
       status: 'checked-in',
       lives: { $gt: 0 },
+      isOnBreak: { $ne: true },
     });
 
     result.processed = checkedInStaff.length;
@@ -160,7 +169,7 @@ export async function processLifeDeductions(): Promise<{
  * This should be called whenever a staff member does any task activity:
  * - Adding a reply to a task
  * - Changing task status to 'done'
- * - Starting/Stopping a task timer
+ * Note: Starting/Stopping a task timer DOES NOT reset the activity timer to prevent loopholes.
  */
 export async function resetActivityTimer(userId: string): Promise<boolean> {
   try {

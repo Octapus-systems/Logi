@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Task from '@/models/Task';
 import Attendance from '@/models/Attendance';
-import { resetActivityTimer } from '@/lib/lives/deductionJob';
+
 import { z } from 'zod';
 import { getToday } from '@/lib/dateUtils';
 
@@ -120,8 +120,6 @@ export async function POST(request: NextRequest) {
 
       await task.save();
 
-      // Reset activity timer
-      await resetActivityTimer(session.user.id);
 
       return NextResponse.json({
         success: true,
@@ -171,8 +169,6 @@ export async function POST(request: NextRequest) {
         await task.save();
         console.log('[Timer API] Task saved successfully');
 
-        // Reset activity timer
-        await resetActivityTimer(session.user.id);
 
         return NextResponse.json({
           success: true,

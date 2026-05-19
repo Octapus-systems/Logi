@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
     const showScheduled = searchParams.get('scheduled') === 'true';
     const showPending = searchParams.get('pending') === 'true';
     const showAll = searchParams.get('all') === 'true';
+    const showPast = searchParams.get('past') === 'true';
     const priority = searchParams.get('priority');
     const search = searchParams.get('search');
     const dateParam = searchParams.get('date'); // YYYY-MM-DD
@@ -131,6 +132,9 @@ export async function GET(request: NextRequest) {
       };
       query.$and = query.$and || [];
       (query.$and as Record<string, unknown>[]).push(dateQueryCondition);
+    } else if (showPast) {
+      const { start } = getISTTodayRange();
+      query.createdAt = { $lt: start };
     } else if (!showAll && !showScheduled && !showPending && !statusParam && !search) {
       // Default to today only if no other major filters are active
       const { start, end } = getISTTodayRange();
